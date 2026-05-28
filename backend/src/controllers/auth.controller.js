@@ -13,6 +13,7 @@ exports.register = async (req, res) => {
   const {
     fullName,
     email,
+    role,
     password,
     studentId,
     university,
@@ -25,18 +26,25 @@ exports.register = async (req, res) => {
   if (exists) {
     return fail(res, { message: "Email already registered", status: 409 });
   }
+  const existsStudentId = await User.findOne({ studentId: String(studentId).trim() });
+  if (existsStudentId) {
+    return fail(res, { message: "Student ID already registered", status: 409 });
+  }
 
   const passwordHash = await bcrypt.hash(password, 12);
+  const normalizedRole = String(role || "student")
+    .trim()
+    .toLowerCase();
   const user = await User.create({
     fullName,
     email,
     passwordHash,
-    studentId,
+    studentId: String(studentId).trim(),
     university,
     faculty,
     major,
     academicYear,
-    role: "student",
+    role: normalizedRole,
   });
 
   const token = generateToken({ id: user._id.toString(), email: user.email, role: user.role });
@@ -49,12 +57,21 @@ exports.register = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, role } = req.body;
+  const requestedRole = String(role || "")
+    .trim()
+    .toLowerCase();
   const user = await User.findOne({ email: String(email).toLowerCase().trim() }).select(
     "+passwordHash"
   );
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     return fail(res, { message: "Invalid email or password", status: 401 });
+  }
+  if (requestedRole !== user.role) {
+    return fail(res, {
+      message: "Role does not match this account",
+      status: 403,
+    });
   }
 
   const token = generateToken({ id: user._id.toString(), email: user.email, role: user.role });
