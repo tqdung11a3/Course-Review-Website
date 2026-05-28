@@ -272,7 +272,7 @@ export default function AuthPage() {
         <div className="card">
           <h2 style={{ fontSize: "21px", fontWeight: 700, marginBottom: "22px" }}>Đăng ký</h2>
           {renderField({
-            id: "r-name",
+            id: "r-fullName",
             label: "Họ và tên",
             required: true,
             icon: SVG.user,
@@ -313,7 +313,7 @@ export default function AuthPage() {
           </div>
           {registerForm.role === "student" &&
             renderField({
-              id: "r-sid",
+              id: "r-studentId",
               label: "Mã sinh viên",
               required: true,
               icon: SVG.id,
@@ -323,7 +323,7 @@ export default function AuthPage() {
               errKey: "studentId",
             })}
           {renderField({
-            id: "r-pw",
+            id: "r-password",
             label: "Mật khẩu",
             required: true,
             icon: SVG.lock,
@@ -334,7 +334,7 @@ export default function AuthPage() {
             eyeKey: "showPw",
           })}
           {renderField({
-            id: "r-cf",
+            id: "r-confirm",
             label: "Xác nhận mật khẩu",
             required: true,
             icon: SVG.lock,
@@ -398,7 +398,7 @@ export default function AuthPage() {
           value: loginForm.email,
         })}
         {renderField({
-          id: "l-pw",
+          id: "l-password",
           label: "Mật khẩu",
           icon: SVG.lock,
           type: "password",
