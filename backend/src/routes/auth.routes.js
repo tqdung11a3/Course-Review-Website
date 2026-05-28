@@ -1,0 +1,33 @@
+const { body } = require("express-validator");
+const router = require("express").Router();
+const asyncHandler = require("../utils/asyncHandler");
+const { validateRequest } = require("../middlewares/validate.middleware");
+const { authMiddleware } = require("../middlewares/auth.middleware");
+const auth = require("../controllers/auth.controller");
+
+router.post(
+  "/register",
+  [
+    body("fullName").trim().notEmpty().withMessage("fullName is required"),
+    body("email").isEmail().withMessage("Valid email is required"),
+    body("password").isLength({ min: 6 }).withMessage("Password min 6 characters"),
+  ],
+  validateRequest,
+  asyncHandler(auth.register)
+);
+
+router.post(
+  "/login",
+  [
+    body("email").isEmail(),
+    body("password").notEmpty(),
+  ],
+  validateRequest,
+  asyncHandler(auth.login)
+);
+
+router.post("/logout", authMiddleware, asyncHandler(auth.logout));
+router.get("/me", authMiddleware, asyncHandler(auth.me));
+router.put("/profile", authMiddleware, asyncHandler(auth.updateProfile));
+
+module.exports = router;
