@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { MainLayout } from "../components/layout/MainLayout";
 import HomePage from "../pages/HomePage";
-import LoginPage from "../pages/LoginPage";
+import AuthPage from "../pages/AuthPage";
 import CoursesPage from "../pages/CoursesPage";
 import CourseDetailPage from "../pages/CourseDetailPage";
 import ProfilePage from "../pages/ProfilePage";
@@ -15,7 +15,7 @@ export function AppRouter() {
     <MainLayout>
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login" element={<AuthPage />} />
         <Route path="/courses" element={<CoursesPage />} />
         <Route path="/courses/:id" element={<CourseDetailPage />} />
 
