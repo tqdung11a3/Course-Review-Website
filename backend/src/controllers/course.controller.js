@@ -7,6 +7,55 @@ const { escapeRegex } = require("../utils/escapeRegex");
 const { rankReviews } = require("../utils/ranking");
 const { success, fail } = require("../utils/response");
 
+function normalizeStringArray(input) {
+  if (!input) return [];
+  if (Array.isArray(input)) {
+    return input
+      .map((x) => String(x || "").trim())
+      .filter(Boolean);
+  }
+  return String(input)
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+function normalizeFileArray(input) {
+  if (!Array.isArray(input)) return [];
+  return input
+    .filter((f) => f && f.fileUrl)
+    .map((f) => ({
+      fileUrl: String(f.fileUrl || "").trim(),
+      fileName: String(f.fileName || "").trim(),
+      fileType: String(f.fileType || "").trim(),
+      fileSize: Number(f.fileSize || 0),
+      uploadedAt: f.uploadedAt ? new Date(f.uploadedAt) : new Date(),
+    }));
+}
+
+function normalizeCoursePayload(rawPayload, { includeRequiredDefaults = false } = {}) {
+  const payload = { ...rawPayload };
+  if (payload.courseCode !== undefined) {
+    payload.courseCode = String(payload.courseCode).toUpperCase().trim();
+  }
+  if (payload.tags !== undefined || includeRequiredDefaults) {
+    payload.tags = normalizeStringArray(payload.tags);
+  }
+  if (payload.offeredSemesters !== undefined || includeRequiredDefaults) {
+    payload.offeredSemesters = normalizeStringArray(payload.offeredSemesters);
+  }
+  if (payload.assessmentMethods !== undefined || includeRequiredDefaults) {
+    payload.assessmentMethods = normalizeStringArray(payload.assessmentMethods);
+  }
+  if (payload.prerequisiteCourseIds !== undefined || includeRequiredDefaults) {
+    payload.prerequisiteCourseIds = normalizeStringArray(payload.prerequisiteCourseIds);
+  }
+  if (payload.syllabusFiles !== undefined || includeRequiredDefaults) {
+    payload.syllabusFiles = normalizeFileArray(payload.syllabusFiles);
+  }
+  return payload;
+}
+
 exports.listCourses = async (req, res) => {
   const { page, limit, skip } = parsePagination(req.query);
   const {
@@ -61,10 +110,42 @@ exports.listCourses = async (req, res) => {
     Course.countDocuments(filter),
   ]);
 
+  const courseIds = items.map((c) => c._id);
+  let statsByCourse = {};
+  if (courseIds.length) {
+    const statsAgg = await Review.aggregate([
+      { $match: { courseId: { $in: courseIds }, status: "published" } },
+      {
+        $group: {
+          _id: "$courseId",
+          avgRating: { $avg: "$ratings.overall" },
+          reviewCount: { $sum: 1 },
+        },
+      },
+    ]);
+    statsByCourse = Object.fromEntries(
+      statsAgg.map((s) => [
+        String(s._id),
+        {
+          avgRating: round2(s.avgRating),
+          reviewCount: s.reviewCount || 0,
+        },
+      ])
+    );
+  }
+
+  const enriched = items.map((course) => {
+    const stats = statsByCourse[String(course._id)] || {
+      avgRating: null,
+      reviewCount: 0,
+    };
+    return { ...course, ...stats };
+  });
+
   return success(res, {
     message: "Courses retrieved",
     data: {
-      items,
+      items: enriched,
       pagination: paginationMeta({ total, page, limit }),
     },
   });
@@ -77,8 +158,10 @@ exports.getCourse = async (req, res) => {
 };
 
 exports.createCourse = async (req, res) => {
-  const payload = { ...req.body, createdBy: req.user._id };
-  if (payload.courseCode) payload.courseCode = String(payload.courseCode).toUpperCase().trim();
+  const payload = normalizeCoursePayload(
+    { ...req.body, createdBy: req.user._id },
+    { includeRequiredDefaults: true }
+  );
   const course = await Course.create(payload);
   return success(res, {
     message: "Course created successfully",
@@ -88,8 +171,7 @@ exports.createCourse = async (req, res) => {
 };
 
 exports.updateCourse = async (req, res) => {
-  const updates = { ...req.body };
-  if (updates.courseCode) updates.courseCode = String(updates.courseCode).toUpperCase().trim();
+  const updates = normalizeCoursePayload(req.body);
   const course = await Course.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true });
   if (!course) return fail(res, { message: "Course not found", status: 404 });
   return success(res, { message: "Course updated", data: { course } });

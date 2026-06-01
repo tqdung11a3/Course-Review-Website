@@ -3,6 +3,15 @@ const User = require("../models/User");
 const { generateToken } = require("../utils/generateToken");
 const { success, fail } = require("../utils/response");
 
+const SCHOOL_EMAIL_SUFFIX = "@sis.hust.edu.vn";
+
+function isSchoolEmail(email) {
+  return String(email || "")
+    .trim()
+    .toLowerCase()
+    .endsWith(SCHOOL_EMAIL_SUFFIX);
+}
+
 function toPublicUser(userDoc) {
   const u = userDoc.toObject ? userDoc.toObject() : userDoc;
   delete u.passwordHash;
@@ -22,24 +31,41 @@ exports.register = async (req, res) => {
     academicYear,
   } = req.body;
 
-  const exists = await User.findOne({ email: String(email).toLowerCase().trim() });
+  const normalizedEmail = String(email).toLowerCase().trim();
+  if (!isSchoolEmail(normalizedEmail)) {
+    return fail(res, {
+      message: "Only school emails (@sis.hust.edu.vn) are accepted",
+      status: 400,
+    });
+  }
+
+  const exists = await User.findOne({ email: normalizedEmail });
   if (exists) {
     return fail(res, { message: "Email already registered", status: 409 });
-  }
-  const existsStudentId = await User.findOne({ studentId: String(studentId).trim() });
-  if (existsStudentId) {
-    return fail(res, { message: "Student ID already registered", status: 409 });
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
   const normalizedRole = String(role || "student")
     .trim()
     .toLowerCase();
+  const trimmedStudentId = String(studentId || "").trim();
+
+  if (normalizedRole === "student" && !trimmedStudentId) {
+    return fail(res, { message: "studentId is required for students", status: 400 });
+  }
+
+  if (trimmedStudentId) {
+    const existsStudentId = await User.findOne({ studentId: trimmedStudentId });
+    if (existsStudentId) {
+      return fail(res, { message: "Student ID already registered", status: 409 });
+    }
+  }
+
   const user = await User.create({
     fullName,
-    email,
+    email: normalizedEmail,
     passwordHash,
-    studentId: String(studentId).trim(),
+    studentId: trimmedStudentId,
     university,
     faculty,
     major,

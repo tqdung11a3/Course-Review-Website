@@ -13,11 +13,19 @@ router.get("/", asyncHandler(course.listCourses));
 router.post(
   "/",
   authMiddleware,
-  roleMiddleware("admin", "moderator"),
   [
     body("courseCode").trim().notEmpty(),
     body("courseName").trim().notEmpty(),
-    body("credits").optional().isNumeric(),
+    body("credits").isNumeric().withMessage("credits is required and must be numeric"),
+    body("faculty").trim().notEmpty().withMessage("faculty is required"),
+    body("tags").optional().isArray(),
+    body("courseType").optional().isString(),
+    body("offeredSemesters").optional().isArray(),
+    body("teachingLanguage").optional().isString(),
+    body("learningMode").optional().isString(),
+    body("assessmentMethods").optional().isArray(),
+    body("prerequisiteCourseIds").optional().isArray(),
+    body("syllabusFiles").optional().isArray(),
   ],
   validateRequest,
   asyncHandler(course.createCourse)
@@ -32,6 +40,21 @@ router.put(
   "/:id",
   authMiddleware,
   roleMiddleware("admin", "moderator"),
+  [
+    body("courseCode").optional().trim().notEmpty(),
+    body("courseName").optional().trim().notEmpty(),
+    body("credits").optional().isNumeric(),
+    body("faculty").optional().isString(),
+    body("tags").optional().isArray(),
+    body("courseType").optional().isString(),
+    body("offeredSemesters").optional().isArray(),
+    body("teachingLanguage").optional().isString(),
+    body("learningMode").optional().isString(),
+    body("assessmentMethods").optional().isArray(),
+    body("prerequisiteCourseIds").optional().isArray(),
+    body("syllabusFiles").optional().isArray(),
+  ],
+  validateRequest,
   asyncHandler(course.updateCourse)
 );
 
