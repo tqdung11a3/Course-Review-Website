@@ -1,49 +1,78 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { getCourses } from "../api/courses";
+import { CourseCard } from "../components/courses/CourseCard";
+import { CourseSearchBar } from "../components/courses/CourseSearchBar";
+import { DashboardHeader } from "../components/layout/DashboardHeader";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
 
 export default function CoursesPage() {
   const [items, setItems] = useState([]);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     async function fetchCourses() {
       setIsLoading(true);
       setError("");
       try {
-        const response = await getCourses({ page: 1, limit: 20 });
+        const params = { page: 1, limit: 50 };
+        if (debouncedSearch) params.search = debouncedSearch;
+        const response = await getCourses(params);
         setItems(response?.data?.items || []);
       } catch (err) {
-        setError(err?.response?.data?.message || "Cannot load courses");
+        setError(err?.response?.data?.message || "Không thể tải danh sách môn học");
       } finally {
         setIsLoading(false);
       }
     }
 
     fetchCourses();
-  }, []);
+  }, [debouncedSearch]);
 
-  if (isLoading) return <LoadingSpinner label="Loading courses..." />;
+  const addButton = useMemo(
+    () => (
+      <Link to="/courses/new" className="btn btn-primary btn-add-course">
+        <span aria-hidden="true">+</span> Thêm môn học
+      </Link>
+    ),
+    []
+  );
 
   return (
-    <section>
-      <h2>Courses</h2>
-      {error && <p className="error">{error}</p>}
-      {items.length === 0 ? (
-        <p className="muted">No courses yet.</p>
-      ) : (
-        items.map((course) => (
-          <article className="card" key={course._id}>
-            <h3>{course.courseName}</h3>
-            <p className="muted">
-              {course.courseCode} • {course.faculty || "N/A"} • {course.credits ?? 0} credits
-            </p>
-            <Link to={`/courses/${course._id}`}>View details</Link>
-          </article>
-        ))
-      )}
-    </section>
+    <div className="dashboard-page">
+      <DashboardHeader action={addButton} />
+      <div className="dashboard-content">
+        <CourseSearchBar value={search} onChange={setSearch} />
+
+        {isLoading ? (
+          <LoadingSpinner label="Đang tải môn học..." />
+        ) : (
+          <>
+            {error && <p className="error">{error}</p>}
+            {items.length === 0 ? (
+              <p className="muted courses-empty">
+                {debouncedSearch
+                  ? "Không tìm thấy môn học phù hợp."
+                  : "Chưa có môn học nào. Hãy thêm môn học đầu tiên."}
+              </p>
+            ) : (
+              <div className="course-grid">
+                {items.map((course) => (
+                  <CourseCard key={course._id} course={course} />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }

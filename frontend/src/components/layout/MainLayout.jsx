@@ -1,31 +1,19 @@
-import { Link, NavLink } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 
-export function MainLayout({ children }) {
-  const { user, isAuthenticated, logout } = useAuth();
+const DASHBOARD_PATHS = ["/courses", "/profile"];
 
-  return (
-    <>
-      <header className="topnav">
-        <div className="topnav-inner">
-          <Link to="/">Course Review</Link>
-          <nav className="topnav-links">
-            <NavLink to="/courses">Courses</NavLink>
-            {isAuthenticated && <NavLink to="/profile">Profile</NavLink>}
-            {isAuthenticated && (user?.role === "admin" || user?.role === "moderator") && (
-              <NavLink to="/admin/proofs">Proof Moderation</NavLink>
-            )}
-            {!isAuthenticated ? (
-              <NavLink to="/login">Login</NavLink>
-            ) : (
-              <button type="button" onClick={logout}>
-                Logout
-              </button>
-            )}
-          </nav>
-        </div>
-      </header>
-      <main className="container">{children}</main>
-    </>
-  );
+export function MainLayout({ children }) {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  const isDashboard =
+    isAuthenticated &&
+    (DASHBOARD_PATHS.some((p) => location.pathname.startsWith(p)) ||
+      location.pathname.startsWith("/admin"));
+
+  if (isDashboard) {
+    return <>{children}</>;
+  }
+
+  return <main className="container">{children}</main>;
 }
