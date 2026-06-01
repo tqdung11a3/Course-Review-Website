@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { CourseDetailMeta } from "./CourseDetailMeta";
 import { RatingStatCard } from "./RatingStatCard";
 
 function formatScore(value) {
@@ -8,6 +9,7 @@ function formatScore(value) {
 
 export function CourseDetailHeader({ course, stats, courseId }) {
   const ratings = stats?.averageRatings || {};
+  const totalReviews = stats?.totalReviews ?? 0;
   const retake =
     stats?.retakeRate != null ? `${stats.retakeRate}%` : "—";
 
@@ -32,6 +34,17 @@ export function CourseDetailHeader({ course, stats, courseId }) {
         </Link>
       </div>
 
+      <CourseDetailMeta course={course} />
+
+      <div className="rating-stats-section">
+        <div className="rating-stats-heading">
+          <h3 className="course-detail-info-title">Thống kê từ review</h3>
+          <p className="muted rating-stats-hint">
+            {totalReviews > 0
+              ? `Dựa trên ${totalReviews} review đã công bố`
+              : "Chưa có review — các chỉ số hiển thị “—” cho đến khi có sinh viên review"}
+          </p>
+        </div>
       <div className="rating-stats-row">
         <RatingStatCard
           variant="overall"
@@ -89,6 +102,7 @@ export function CourseDetailHeader({ course, stats, courseId }) {
             </svg>
           }
         />
+      </div>
       </div>
     </section>
   );
