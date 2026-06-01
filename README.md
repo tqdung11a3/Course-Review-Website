@@ -38,3 +38,7 @@ Course-Review-Website/
 Quy tắc code chung cho nhóm: [`frontend/REACT_CONVENTIONS.md`](frontend/REACT_CONVENTIONS.md)
 
 Hướng dẫn khởi tạo Vite: [`frontend/README.md`](frontend/README.md)
+
+## Deploy (Vercel + Render + Atlas)
+
+Hướng dẫn từng bước: [`DEPLOY.md`](DEPLOY.md)

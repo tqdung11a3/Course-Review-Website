@@ -1,0 +1,20 @@
+# Blueprint Render (tuỳ chọn): Dashboard → New → Blueprint → chọn repo
+services:
+  - type: web
+    name: course-review-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: UPLOAD_DIR
+        value: uploads
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
