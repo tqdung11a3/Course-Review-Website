@@ -1,10 +1,12 @@
 const Course = require("../models/Course");
 const Review = require("../models/Review");
+const ReviewVote = require("../models/ReviewVote");
 const LearningMaterial = require("../models/LearningMaterial");
 const CourseProof = require("../models/CourseProof");
 const { parsePagination, paginationMeta } = require("../utils/pagination");
 const { escapeRegex } = require("../utils/escapeRegex");
 const { rankReviews } = require("../utils/ranking");
+const { mergeEvidenceFiles } = require("../utils/reviewEvidence");
 const { success, fail } = require("../utils/response");
 
 function normalizeStringArray(input) {
@@ -186,7 +188,16 @@ exports.deleteCourse = async (req, res) => {
 exports.listCourseReviews = async (req, res) => {
   const courseId = req.params.id;
   const { page, limit, skip } = parsePagination(req.query);
-  const { status, sort = "-createdAt" } = req.query;
+  const {
+    status,
+    sort = "-helpfulCount",
+    minOverall,
+    overall,
+    difficulty,
+    semester,
+    academicYear,
+    lecturerName,
+  } = req.query;
 
   const filter = { courseId };
   const isStaff = req.user && (req.user.role === "admin" || req.user.role === "moderator");
@@ -196,32 +207,100 @@ exports.listCourseReviews = async (req, res) => {
     filter.status = status;
   }
 
-  const sortFieldRaw = String(sort).replace(/^-/, "");
-  const allowedReviewSort = new Set(["createdAt", "helpfulCount", "notHelpfulCount", "updatedAt"]);
-  const sortField = allowedReviewSort.has(sortFieldRaw) ? sortFieldRaw : "createdAt";
-  const sortDir = String(sort).startsWith("-") ? -1 : 1;
+  if (overall !== undefined && overall !== "") {
+    filter["ratings.overall"] = Number(overall);
+  } else if (minOverall !== undefined && minOverall !== "") {
+    filter["ratings.overall"] = { $gte: Number(minOverall) };
+  }
+  if (difficulty !== undefined && difficulty !== "") {
+    filter["ratings.difficulty"] = Number(difficulty);
+  }
+  if (semester) filter.semester = String(semester).trim();
+  if (academicYear) filter.academicYear = String(academicYear).trim();
+  if (lecturerName) filter.lecturerName = String(lecturerName).trim();
 
-  const [items, total] = await Promise.all([
+  const sortKey = String(sort);
+  let sortObj = { helpfulCount: -1, createdAt: -1 };
+  if (sortKey === "-createdAt" || sortKey === "createdAt") {
+    sortObj = { createdAt: sortKey.startsWith("-") ? -1 : 1 };
+  } else if (sortKey === "-notHelpfulCount" || sortKey === "notHelpfulCount") {
+    sortObj = { notHelpfulCount: sortKey.startsWith("-") ? -1 : 1, createdAt: -1 };
+  } else if (sortKey === "-overall" || sortKey === "overall") {
+    sortObj = { "ratings.overall": sortKey.startsWith("-") ? -1 : 1, helpfulCount: -1 };
+  }
+
+  const facetFilter = { courseId };
+  if (!isStaff) facetFilter.status = "published";
+  else if (status) facetFilter.status = status;
+
+  const [items, total, semesters, academicYears, lecturerNames] = await Promise.all([
     Review.find(filter)
-      .sort({ [sortField]: sortDir })
+      .sort(sortObj)
       .skip(skip)
       .limit(limit)
       .populate("userId", "fullName avatarUrl")
       .lean(),
     Review.countDocuments(filter),
+    Review.distinct("semester", facetFilter),
+    Review.distinct("academicYear", facetFilter),
+    Review.distinct("lecturerName", facetFilter),
   ]);
+
+  const proofIds = [...new Set(items.map((r) => r.enrollmentProofId).filter(Boolean))];
+  const proofs = proofIds.length
+    ? await CourseProof.find({ _id: { $in: proofIds } }).lean()
+    : [];
+  const proofById = Object.fromEntries(proofs.map((p) => [String(p._id), p]));
+
+  const reviewIds = items.map((r) => r._id);
+  const materialsByReview = {};
+  if (reviewIds.length) {
+    const materials = await LearningMaterial.find({ reviewId: { $in: reviewIds } })
+      .sort({ recommendationLevel: 1, createdAt: -1 })
+      .lean();
+    for (const m of materials) {
+      const key = String(m.reviewId);
+      if (!materialsByReview[key]) materialsByReview[key] = [];
+      materialsByReview[key].push(m);
+    }
+  }
+
+  let voteByReview = {};
+  if (req.user && reviewIds.length) {
+    const votes = await ReviewVote.find({
+      userId: req.user._id,
+      reviewId: { $in: reviewIds },
+    }).lean();
+    voteByReview = Object.fromEntries(votes.map((v) => [String(v.reviewId), v.voteType]));
+  }
 
   const mapped = items.map((r) => {
     const uid = r.userId?._id || r.userId;
     if (r.isAnonymous && (!req.user || String(uid) !== String(req.user._id))) {
       r.userId = null;
     }
-    return r;
+    const proof = proofById[String(r.enrollmentProofId)];
+    const evidenceFiles = mergeEvidenceFiles(r, proof);
+    return {
+      ...r,
+      materials: materialsByReview[String(r._id)] || [],
+      userVote: voteByReview[String(r._id)] || null,
+      evidenceFiles,
+      hasEvidence: evidenceFiles.length > 0,
+    };
   });
 
   return success(res, {
     message: "Reviews retrieved",
-    data: { items: mapped, pagination: paginationMeta({ total, page, limit }) },
+    data: {
+      items: mapped,
+      pagination: paginationMeta({ total, page, limit }),
+      facets: {
+        semesters: semesters.filter(Boolean),
+        academicYears: academicYears.filter(Boolean),
+        lecturerNames: lecturerNames.filter(Boolean).sort((a, b) => a.localeCompare(b, "vi")),
+      },
+    },
   });
 };
 
@@ -309,6 +388,17 @@ exports.getCourseStats = async (req, res) => {
           },
           { $sort: { _id: 1 } },
         ],
+        retake: [
+          {
+            $group: {
+              _id: null,
+              total: { $sum: 1 },
+              wouldTakeAgain: {
+                $sum: { $cond: [{ $eq: ["$wouldTakeAgain", true] }, 1, 0] },
+              },
+            },
+          },
+        ],
       },
     },
   ]);
@@ -339,6 +429,9 @@ exports.getCourseStats = async (req, res) => {
     .lean();
 
   const av = agg[0]?.averages?.[0] || {};
+  const retake = agg[0]?.retake?.[0] || {};
+  const retakeRate =
+    retake.total > 0 ? Math.round((retake.wouldTakeAgain / retake.total) * 100) : null;
   const totalReviews = av.total || 0;
   const ratingDistribution = (agg[0]?.distribution || []).reduce((acc, d) => {
     acc[String(d._id)] = d.count;
@@ -357,6 +450,7 @@ exports.getCourseStats = async (req, res) => {
         teachingQuality: round2(av.teachingQuality),
       },
       totalReviews,
+      retakeRate,
       totalVerifiedReviews: verifiedCount,
       ratingDistribution,
       commonTags,

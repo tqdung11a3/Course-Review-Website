@@ -39,23 +39,30 @@ exports.register = async (req, res) => {
     });
   }
 
-  const exists = await User.findOne({ email: normalizedEmail });
-  if (exists) {
-    return fail(res, { message: "Email already registered", status: 409 });
-  }
-
-  const passwordHash = await bcrypt.hash(password, 12);
   const normalizedRole = String(role || "student")
     .trim()
     .toLowerCase();
+
+  const exists = await User.findOne({ email: normalizedEmail, role: normalizedRole });
+  if (exists) {
+    return fail(res, {
+      message: "Email already registered for this role",
+      status: 409,
+    });
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
   const trimmedStudentId = String(studentId || "").trim();
 
   if (normalizedRole === "student" && !trimmedStudentId) {
     return fail(res, { message: "studentId is required for students", status: 400 });
   }
 
-  if (trimmedStudentId) {
-    const existsStudentId = await User.findOne({ studentId: trimmedStudentId });
+  if (normalizedRole === "student" && trimmedStudentId) {
+    const existsStudentId = await User.findOne({
+      studentId: trimmedStudentId,
+      role: "student",
+    });
     if (existsStudentId) {
       return fail(res, { message: "Student ID already registered", status: 409 });
     }
@@ -87,17 +94,12 @@ exports.login = async (req, res) => {
   const requestedRole = String(role || "")
     .trim()
     .toLowerCase();
-  const user = await User.findOne({ email: String(email).toLowerCase().trim() }).select(
-    "+passwordHash"
-  );
+  const user = await User.findOne({
+    email: String(email).toLowerCase().trim(),
+    role: requestedRole,
+  }).select("+passwordHash");
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     return fail(res, { message: "Invalid email or password", status: 401 });
-  }
-  if (requestedRole !== user.role) {
-    return fail(res, {
-      message: "Role does not match this account",
-      status: 403,
-    });
   }
 
   const token = generateToken({ id: user._id.toString(), email: user.email, role: user.role });

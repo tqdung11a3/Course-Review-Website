@@ -6,6 +6,7 @@ const ReviewVote = require("../models/ReviewVote");
 const ReviewReport = require("../models/ReviewReport");
 const { parsePagination, paginationMeta } = require("../utils/pagination");
 const { success, fail } = require("../utils/response");
+const { createNotification } = require("../utils/notify");
 
 function sanitizeReviewForViewer(review, viewerId) {
   const r = review.toObject ? review.toObject() : { ...review };
@@ -44,6 +45,11 @@ exports.createReview = async (req, res) => {
   const course = await Course.findById(body.courseId);
   if (!course) return fail(res, { message: "Course not found", status: 404 });
 
+  let evidenceFiles = Array.isArray(body.evidenceFiles) ? body.evidenceFiles : [];
+  if (!evidenceFiles.length && proof.proofFiles?.length) {
+    evidenceFiles = proof.proofFiles;
+  }
+
   try {
     const review = await Review.create({
       userId: req.user._id,
@@ -52,16 +58,29 @@ exports.createReview = async (req, res) => {
       semester: body.semester,
       academicYear: body.academicYear,
       lecturerName: body.lecturerName || proof.lecturerName || "",
+      grade: body.grade || "",
+      hasMandatoryAttendance: !!body.hasMandatoryAttendance,
+      wouldTakeAgain: !!body.wouldTakeAgain,
       isAnonymous: !!body.isAnonymous,
       ratings: body.ratings,
       details: body.details || {},
       learnerProfile: body.learnerProfile || {},
-      evidenceFiles: Array.isArray(body.evidenceFiles) ? body.evidenceFiles : [],
+      evidenceFiles,
       status: "pending",
     });
 
+    const courseLabel = `${course.courseCode} - ${course.courseName}`;
+    await createNotification({
+      userId: req.user._id,
+      type: "review_submitted",
+      title: "Review đã gửi chờ duyệt",
+      message: `Review môn ${courseLabel} đã được gửi. Quản trị sẽ xem xét và thông báo kết quả.`,
+      reviewId: review._id,
+      courseId: course._id,
+    });
+
     return success(res, {
-      message: "Review created successfully",
+      message: "Review submitted and pending approval",
       data: { review: sanitizeReviewForViewer(review, req.user._id) },
       status: 201,
     });
@@ -74,6 +93,34 @@ exports.createReview = async (req, res) => {
     }
     throw err;
   }
+};
+
+exports.listMyReviews = async (req, res) => {
+  const { mergeEvidenceFiles } = require("../utils/reviewEvidence");
+  const reviews = await Review.find({ userId: req.user._id })
+    .sort({ createdAt: -1 })
+    .populate("courseId", "courseCode courseName")
+    .lean();
+
+  const proofIds = reviews.map((r) => r.enrollmentProofId).filter(Boolean);
+  const proofs = await CourseProof.find({ _id: { $in: proofIds } }).lean();
+  const proofById = Object.fromEntries(proofs.map((p) => [String(p._id), p]));
+
+  return success(res, {
+    message: "My reviews",
+    data: {
+      items: reviews.map((r) => {
+        const proof = proofById[String(r.enrollmentProofId)];
+        const evidenceFiles = mergeEvidenceFiles(r, proof);
+        return {
+          ...r,
+          courseCode: r.courseId?.courseCode,
+          courseName: r.courseId?.courseName,
+          evidenceFiles,
+        };
+      }),
+    },
+  });
 };
 
 exports.listReviews = async (req, res) => {
@@ -119,7 +166,12 @@ exports.listReviews = async (req, res) => {
 };
 
 exports.getReview = async (req, res) => {
-  const review = await Review.findById(req.params.id).populate("userId", "fullName avatarUrl");
+  const { mergeEvidenceFiles } = require("../utils/reviewEvidence");
+  const review = await Review.findById(req.params.id)
+    .populate("userId", "fullName avatarUrl studentId")
+    .populate("courseId", "courseCode courseName")
+    .lean();
+
   if (!review) return fail(res, { message: "Review not found", status: 404 });
 
   const isStaff =
@@ -130,9 +182,29 @@ exports.getReview = async (req, res) => {
     return fail(res, { message: "Review not found", status: 404 });
   }
 
+  if (review.isAnonymous && !isStaff && !isOwner) {
+    review.userId = null;
+  }
+
+  const [materials, proof] = await Promise.all([
+    LearningMaterial.find({ reviewId: review._id }).lean(),
+    review.enrollmentProofId
+      ? CourseProof.findById(review.enrollmentProofId).lean()
+      : Promise.resolve(null),
+  ]);
+
+  const evidenceFiles = mergeEvidenceFiles(review, proof);
+
   return success(res, {
     message: "OK",
-    data: { review: sanitizeReviewForViewer(review, req.user?._id) },
+    data: {
+      review: {
+        ...review,
+        materials,
+        evidenceFiles,
+        hasEvidence: evidenceFiles.length > 0,
+      },
+    },
   });
 };
 
@@ -210,21 +282,50 @@ exports.publishReview = async (req, res) => {
     { new: true }
   );
   if (!review) return fail(res, { message: "Review not found", status: 404 });
+
+  const course = await Course.findById(review.courseId).select("courseCode courseName").lean();
+  const courseLabel = course ? `${course.courseCode} - ${course.courseName}` : "môn học";
+
+  await createNotification({
+    userId: review.userId,
+    type: "review_approved",
+    title: "Review đã được phê duyệt",
+    message: `Review môn ${courseLabel} đã được phê duyệt và hiển thị công khai.${
+      req.body.moderationNote ? ` Ghi chú: ${req.body.moderationNote}` : ""
+    }`,
+    reviewId: review._id,
+    courseId: review.courseId,
+  });
+
   return success(res, { message: "Review published", data: { review } });
 };
 
 exports.rejectReview = async (req, res) => {
+  const note = req.body.moderationNote || "Review không đáp ứng tiêu chí.";
   const review = await Review.findByIdAndUpdate(
     req.params.id,
     {
       $set: {
         status: "rejected",
-        moderationNote: req.body.moderationNote || "Rejected",
+        moderationNote: note,
       },
     },
     { new: true }
   );
   if (!review) return fail(res, { message: "Review not found", status: 404 });
+
+  const course = await Course.findById(review.courseId).select("courseCode courseName").lean();
+  const courseLabel = course ? `${course.courseCode} - ${course.courseName}` : "môn học";
+
+  await createNotification({
+    userId: review.userId,
+    type: "review_rejected",
+    title: "Review bị từ chối",
+    message: `Review môn ${courseLabel} đã bị từ chối. Lý do: ${note}`,
+    reviewId: review._id,
+    courseId: review.courseId,
+  });
+
   return success(res, { message: "Review rejected", data: { review } });
 };
 

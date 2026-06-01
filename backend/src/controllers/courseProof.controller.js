@@ -10,9 +10,7 @@ exports.createProof = async (req, res) => {
   const course = await Course.findById(courseId);
   if (!course) return fail(res, { message: "Course not found", status: 404 });
 
-  if (!Array.isArray(proofFiles) || proofFiles.length === 0) {
-    return fail(res, { message: "At least one proof file is required", status: 400 });
-  }
+  const files = Array.isArray(proofFiles) ? proofFiles : [];
 
   const proof = await CourseProof.create({
     userId: req.user._id,
@@ -20,8 +18,9 @@ exports.createProof = async (req, res) => {
     semester,
     academicYear,
     lecturerName,
-    proofFiles,
-    status: "pending",
+    proofFiles: files,
+    status: "approved",
+    reviewedBy: req.user._id,
   });
 
   return success(res, {

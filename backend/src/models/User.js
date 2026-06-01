@@ -8,10 +8,8 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true,
-      index: true,
     },
     passwordHash: { type: String, required: true, select: false },
     studentId: { type: String, trim: true, default: "" },
@@ -31,8 +29,10 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+userSchema.index({ email: 1, role: 1 }, { unique: true });
 userSchema.index({ faculty: 1 });
 userSchema.index({ university: 1 });
+userSchema.index({ studentId: 1, role: 1 }, { sparse: true });
 
 module.exports = mongoose.model("User", userSchema);
 module.exports.ROLES = ROLES;

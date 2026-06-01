@@ -14,8 +14,14 @@ const reviewRoutes = require("./routes/review.routes");
 const learningMaterialRoutes = require("./routes/learningMaterial.routes");
 const reportRoutes = require("./routes/report.routes");
 const uploadRoutes = require("./routes/upload.routes");
+const adminRoutes = require("./routes/admin.routes");
+const notificationRoutes = require("./routes/notification.routes");
 
 const app = express();
+
+if (env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
 
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
@@ -34,6 +40,8 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/materials", learningMaterialRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/uploads", uploadRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: "Route not found" });

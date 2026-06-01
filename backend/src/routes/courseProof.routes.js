@@ -14,7 +14,7 @@ router.post(
     body("courseId").notEmpty().withMessage("courseId is required"),
     body("semester").trim().notEmpty(),
     body("academicYear").trim().notEmpty(),
-    body("proofFiles").isArray({ min: 1 }).withMessage("proofFiles array required"),
+    body("proofFiles").optional().isArray(),
   ],
   validateRequest,
   asyncHandler(ctrl.createProof)

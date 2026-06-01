@@ -21,10 +21,17 @@ exports.upsertVote = async (req, res) => {
 
   const inc = { helpfulCount: 0, notHelpfulCount: 0 };
 
+  let userVote = voteType;
+
   if (!existing) {
     await ReviewVote.create({ userId: req.user._id, reviewId: review._id, voteType });
     if (voteType === "helpful") inc.helpfulCount = 1;
     else inc.notHelpfulCount = 1;
+  } else if (existing.voteType === voteType) {
+    await ReviewVote.deleteOne({ _id: existing._id });
+    if (voteType === "helpful") inc.helpfulCount = -1;
+    else inc.notHelpfulCount = -1;
+    userVote = null;
   } else if (existing.voteType !== voteType) {
     if (existing.voteType === "helpful") {
       inc.helpfulCount = -1;
@@ -50,7 +57,10 @@ exports.upsertVote = async (req, res) => {
   }
 
   const updated = await Review.findById(review._id).select("helpfulCount notHelpfulCount");
-  return success(res, { message: "Vote recorded", data: { vote: { voteType }, review: updated } });
+  return success(res, {
+    message: userVote ? "Vote recorded" : "Vote removed",
+    data: { vote: userVote ? { voteType: userVote } : null, userVote, review: updated },
+  });
 };
 
 exports.removeVote = async (req, res) => {
@@ -72,5 +82,9 @@ exports.removeVote = async (req, res) => {
       : { notHelpfulCount: -1 };
 
   await Review.updateOne({ _id: review._id }, { $inc: inc });
-  return success(res, { message: "Vote removed", data: {} });
+  const updated = await Review.findById(review._id).select("helpfulCount notHelpfulCount");
+  return success(res, {
+    message: "Vote removed",
+    data: { vote: null, userVote: null, review: updated },
+  });
 };

@@ -33,6 +33,7 @@ router.post(
   asyncHandler(review.createReview)
 );
 
+router.get("/me", authMiddleware, asyncHandler(review.listMyReviews));
 router.get("/", optionalAuthMiddleware, asyncHandler(review.listReviews));
 
 router.put(
