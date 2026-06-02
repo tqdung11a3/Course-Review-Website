@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
 import { CourseDetailMeta } from "./CourseDetailMeta";
 import { RatingStatCard } from "./RatingStatCard";
 
@@ -8,6 +9,8 @@ function formatScore(value) {
 }
 
 export function CourseDetailHeader({ course, stats, courseId }) {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
   const ratings = stats?.averageRatings || {};
   const totalReviews = stats?.totalReviews ?? 0;
   const retake =
@@ -29,9 +32,19 @@ export function CourseDetailHeader({ course, stats, courseId }) {
             {course.description || "Chưa có mô tả cho môn học này."}
           </p>
         </div>
-        <Link to={`/courses/${courseId}/reviews/new`} className="btn btn-primary btn-write-review">
-          Viết Review
-        </Link>
+        {isAuthenticated ? (
+          <Link to={`/courses/${courseId}/reviews/new`} className="btn btn-primary btn-write-review">
+            Viết Review
+          </Link>
+        ) : (
+          <Link
+            to="/login"
+            state={{ from: location }}
+            className="btn btn-primary btn-write-review"
+          >
+            Đăng nhập để viết Review
+          </Link>
+        )}
       </div>
 
       <CourseDetailMeta course={course} />

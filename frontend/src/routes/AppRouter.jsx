@@ -20,10 +20,10 @@ export function AppRouter() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/courses" element={<CoursesPage />} />
+        <Route path="/courses/:id" element={<CourseDetailPage />} />
         <Route element={<ProtectedRoute />}>
-          <Route path="/courses" element={<CoursesPage />} />
           <Route path="/courses/new" element={<AddCoursePage />} />
-          <Route path="/courses/:id" element={<CourseDetailPage />} />
           <Route path="/courses/:id/reviews/new" element={<WriteReviewPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>

@@ -276,6 +276,28 @@ button {
   gap: 16px;
 }
 
+.dashboard-guest-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dashboard-guest-label {
+  font-size: 0.85rem;
+}
+
+.guest-hint-banner {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  background: #f0f6ff;
+  border: 1px solid #c5d9f8;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: #42526e;
+  line-height: 1.5;
+}
+
 .dashboard-user {
   display: flex;
   align-items: center;

@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { getCourseById, getCourseReviews, getCourseStats } from "../api/courses";
 import { CourseDetailHeader } from "../components/courses/CourseDetailHeader";
 import { ReviewCard } from "../components/courses/ReviewCard";
 import { ReviewFilters } from "../components/courses/ReviewFilters";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { DashboardHeader } from "../components/layout/DashboardHeader";
+import { useAuth } from "../hooks/useAuth";
 import { EMPTY_REVIEW_FILTERS } from "../utils/reviewFilterConstants";
 
 export default function CourseDetailPage() {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
   const { id } = useParams();
   const [course, setCourse] = useState(null);
   const [stats, setStats] = useState(null);
@@ -129,7 +132,16 @@ export default function CourseDetailPage() {
               ) : reviews.length === 0 ? (
                 <p className="muted courses-empty">
                   Không có review phù hợp bộ lọc.{" "}
-                  <Link to={`/courses/${id}/reviews/new`}>Viết review</Link>
+                  {isAuthenticated ? (
+                    <Link to={`/courses/${id}/reviews/new`}>Viết review</Link>
+                  ) : (
+                    <>
+                      <Link to="/login" state={{ from: location }}>
+                        Đăng nhập
+                      </Link>{" "}
+                      để viết review.
+                    </>
+                  )}
                 </p>
               ) : (
                 <div className="review-list">

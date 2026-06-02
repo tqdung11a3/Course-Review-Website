@@ -154,7 +154,9 @@ exports.listCourses = async (req, res) => {
 };
 
 exports.getCourse = async (req, res) => {
-  const course = await Course.findById(req.params.id);
+  const course = await Course.findById(req.params.id)
+    .populate("prerequisiteCourseIds", "courseCode courseName")
+    .lean();
   if (!course) return fail(res, { message: "Course not found", status: 404 });
   return success(res, { message: "OK", data: { course } });
 };
