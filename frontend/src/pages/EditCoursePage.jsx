@@ -19,6 +19,7 @@ import {
   SEMESTER_OPTIONS,
   TEACHING_LANGUAGE_OPTIONS,
 } from "../utils/courseFormConstants";
+import { applyCourseSubmitError } from "../utils/courseFormErrors";
 import { buildCoursePayload, mapCourseToForm } from "../utils/courseFormHelpers";
 
 function validateForm(form) {
@@ -108,7 +109,7 @@ export default function EditCoursePage() {
       await updateCourse(id, buildCoursePayload(form, [...existingSyllabus, ...uploaded]));
       navigate(`/courses/${id}`, { replace: true });
     } catch (err) {
-      setError(err?.response?.data?.message || "Không thể cập nhật môn học");
+      applyCourseSubmitError(err, setFieldErrors, setError, "Không thể cập nhật môn học");
     } finally {
       setIsSubmitting(false);
     }

@@ -18,6 +18,7 @@ import {
   SEMESTER_OPTIONS,
   TEACHING_LANGUAGE_OPTIONS,
 } from "../utils/courseFormConstants";
+import { applyCourseSubmitError } from "../utils/courseFormErrors";
 
 function validateForm(form) {
   const errors = {};
@@ -106,7 +107,7 @@ export default function AddCoursePage() {
 
       navigate("/courses", { replace: true });
     } catch (err) {
-      setError(err?.response?.data?.message || "Không thể thêm môn học");
+      applyCourseSubmitError(err, setFieldErrors, setError, "Không thể thêm môn học");
     } finally {
       setIsSubmitting(false);
     }

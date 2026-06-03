@@ -8,6 +8,7 @@ const { escapeRegex } = require("../utils/escapeRegex");
 const { rankReviews } = require("../utils/ranking");
 const { mergeEvidenceFiles } = require("../utils/reviewEvidence");
 const { success, fail } = require("../utils/response");
+const { assertCourseCodeAvailable } = require("../utils/courseCode");
 
 function normalizeStringArray(input) {
   if (!input) return [];
@@ -166,12 +167,27 @@ exports.createCourse = async (req, res) => {
     { ...req.body, createdBy: req.user._id },
     { includeRequiredDefaults: true }
   );
-  const course = await Course.create(payload);
-  return success(res, {
-    message: "Course created successfully",
-    data: { course },
-    status: 201,
-  });
+
+  try {
+    await assertCourseCodeAvailable(payload.courseCode);
+    const course = await Course.create(payload);
+    return success(res, {
+      message: "Course created successfully",
+      data: { course },
+      status: 201,
+    });
+  } catch (err) {
+    if (err.status === 409) {
+      return fail(res, { message: err.message, status: 409 });
+    }
+    if (err.code === 11000) {
+      return fail(res, {
+        message: "Mã môn học này đã tồn tại. Vui lòng nhập mã khác.",
+        status: 409,
+      });
+    }
+    throw err;
+  }
 };
 
 exports.updateCourse = async (req, res) => {
@@ -193,13 +209,30 @@ exports.updateCourse = async (req, res) => {
   const updates = normalizeCoursePayload(req.body);
   delete updates.createdBy;
 
-  const updated = await Course.findByIdAndUpdate(
-    req.params.id,
-    { $set: updates },
-    { new: true }
-  );
+  try {
+    if (updates.courseCode !== undefined) {
+      await assertCourseCodeAvailable(updates.courseCode, req.params.id);
+    }
 
-  return success(res, { message: "Course updated", data: { course: updated } });
+    const updated = await Course.findByIdAndUpdate(
+      req.params.id,
+      { $set: updates },
+      { new: true }
+    );
+
+    return success(res, { message: "Course updated", data: { course: updated } });
+  } catch (err) {
+    if (err.status === 409) {
+      return fail(res, { message: err.message, status: 409 });
+    }
+    if (err.code === 11000) {
+      return fail(res, {
+        message: "Mã môn học này đã tồn tại. Vui lòng nhập mã khác.",
+        status: 409,
+      });
+    }
+    throw err;
+  }
 };
 
 exports.deleteCourse = async (req, res) => {

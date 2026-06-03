@@ -12,9 +12,23 @@ function errorMiddleware(err, req, res, next) {
   }
 
   if (err.code === 11000) {
+    const dupField = err.keyPattern ? Object.keys(err.keyPattern)[0] : "";
+    if (dupField === "courseCode") {
+      return res.status(409).json({
+        success: false,
+        message: "Mã môn học này đã tồn tại. Vui lòng nhập mã khác.",
+      });
+    }
     return res.status(409).json({
       success: false,
       message: "Duplicate entry — this record already exists",
+    });
+  }
+
+  if (err.status === 409 && err.message) {
+    return res.status(409).json({
+      success: false,
+      message: err.message,
     });
   }
 
