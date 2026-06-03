@@ -4,9 +4,11 @@ import { getCourseById, getCourseReviews, getCourseStats } from "../api/courses"
 import { CourseDetailHeader } from "../components/courses/CourseDetailHeader";
 import { ReviewCard } from "../components/courses/ReviewCard";
 import { ReviewFilters } from "../components/courses/ReviewFilters";
+import { ApiErrorState } from "../components/common/ApiErrorState";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { DashboardHeader } from "../components/layout/DashboardHeader";
 import { useAuth } from "../hooks/useAuth";
+import { getApiErrorMessage } from "../utils/apiRetry";
 import { EMPTY_REVIEW_FILTERS } from "../utils/reviewFilterConstants";
 
 export default function CourseDetailPage() {
@@ -23,8 +25,10 @@ export default function CourseDetailPage() {
   });
   const [filters, setFilters] = useState(EMPTY_REVIEW_FILTERS);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingLabel, setLoadingLabel] = useState("Đang tải môn học...");
   const [isReviewsLoading, setIsReviewsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   const loadReviews = useCallback(async () => {
     setIsReviewsLoading(true);
@@ -36,7 +40,9 @@ export default function CourseDetailPage() {
       if (filters.academicYear) params.academicYear = filters.academicYear;
       if (filters.lecturerName) params.lecturerName = filters.lecturerName;
 
-      const reviewsRes = await getCourseReviews(id, params);
+      const reviewsRes = await getCourseReviews(id, params, {
+        onRetry: () => setLoadingLabel("Máy chủ đang khởi động, đang tải review..."),
+      });
       setReviews(reviewsRes?.data?.items || []);
       if (reviewsRes?.data?.facets) {
         setFacets((prev) => ({
@@ -60,21 +66,27 @@ export default function CourseDetailPage() {
     async function load() {
       setIsLoading(true);
       setError("");
+      setLoadingLabel("Đang tải môn học...");
+      const retryOpts = {
+        onRetry: () => {
+          setLoadingLabel("Máy chủ đang khởi động (có thể mất ~1 phút), vui lòng đợi...");
+        },
+      };
       try {
         const [courseRes, statsRes] = await Promise.all([
-          getCourseById(id),
-          getCourseStats(id),
+          getCourseById(id, retryOpts),
+          getCourseStats(id, retryOpts),
         ]);
         setCourse(courseRes?.data?.course || null);
         setStats(statsRes?.data || null);
       } catch (err) {
-        setError(err?.response?.data?.message || "Không thể tải chi tiết môn học");
+        setError(getApiErrorMessage(err, "Không thể tải chi tiết môn học"));
       } finally {
         setIsLoading(false);
       }
     }
     load();
-  }, [id]);
+  }, [id, reloadKey]);
 
   useEffect(() => {
     if (!isLoading && course) {
@@ -106,9 +118,9 @@ export default function CourseDetailPage() {
         </Link>
 
         {isLoading ? (
-          <LoadingSpinner label="Đang tải môn học..." />
+          <LoadingSpinner label={loadingLabel} />
         ) : error ? (
-          <p className="error">{error}</p>
+          <ApiErrorState message={error} onRetry={() => setReloadKey((k) => k + 1)} />
         ) : !course ? (
           <p className="muted">Không tìm thấy môn học.</p>
         ) : (

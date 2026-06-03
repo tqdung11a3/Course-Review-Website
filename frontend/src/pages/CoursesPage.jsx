@@ -5,7 +5,9 @@ import { useAuth } from "../hooks/useAuth";
 import { CourseCard } from "../components/courses/CourseCard";
 import { CourseSearchBar } from "../components/courses/CourseSearchBar";
 import { DashboardHeader } from "../components/layout/DashboardHeader";
+import { ApiErrorState } from "../components/common/ApiErrorState";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
+import { getApiErrorMessage } from "../utils/apiRetry";
 
 export default function CoursesPage() {
   const { isAuthenticated } = useAuth();
@@ -13,7 +15,9 @@ export default function CoursesPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingLabel, setLoadingLabel] = useState("Đang tải môn học...");
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -24,20 +28,25 @@ export default function CoursesPage() {
     async function fetchCourses() {
       setIsLoading(true);
       setError("");
+      setLoadingLabel("Đang tải môn học...");
       try {
         const params = { page: 1, limit: 50 };
         if (debouncedSearch) params.search = debouncedSearch;
-        const response = await getCourses(params);
+        const response = await getCourses(params, {
+          onRetry: () => {
+            setLoadingLabel("Máy chủ đang khởi động (có thể mất ~1 phút), vui lòng đợi...");
+          },
+        });
         setItems(response?.data?.items || []);
       } catch (err) {
-        setError(err?.response?.data?.message || "Không thể tải danh sách môn học");
+        setError(getApiErrorMessage(err, "Không thể tải danh sách môn học"));
       } finally {
         setIsLoading(false);
       }
     }
 
     fetchCourses();
-  }, [debouncedSearch]);
+  }, [debouncedSearch, reloadKey]);
 
   const addButton = useMemo(
     () =>
@@ -62,10 +71,15 @@ export default function CoursesPage() {
         <CourseSearchBar value={search} onChange={setSearch} />
 
         {isLoading ? (
-          <LoadingSpinner label="Đang tải môn học..." />
+          <LoadingSpinner label={loadingLabel} />
         ) : (
           <>
-            {error && <p className="error">{error}</p>}
+            {error && (
+              <ApiErrorState
+                message={error}
+                onRetry={() => setReloadKey((k) => k + 1)}
+              />
+            )}
             {items.length === 0 ? (
               <p className="muted courses-empty">
                 {debouncedSearch

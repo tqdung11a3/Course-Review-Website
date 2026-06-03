@@ -5,7 +5,8 @@ const TOKEN_KEY = "course_review_token";
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000,
+  // Render free cold start có thể > 15s
+  timeout: 90000,
 });
 
 apiClient.interceptors.request.use((config) => {
