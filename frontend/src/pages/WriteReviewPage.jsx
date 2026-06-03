@@ -2,20 +2,22 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { createCourseProof } from "../api/courseProofs";
 import { getCourseById } from "../api/courses";
+import { deleteLearningMaterial, updateLearningMaterial } from "../api/materials";
 import { createReview, createReviewMaterial, getReviewById, updateReview } from "../api/reviews";
 import { uploadFiles } from "../api/uploads";
 import { FormField } from "../components/courses/form/FormField";
+import { ReviewMaterialCard } from "../components/courses/ReviewMaterialCard";
 import { MaterialForm } from "../components/reviews/MaterialForm";
 import { ReviewStepper } from "../components/reviews/ReviewStepper";
 import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { DashboardHeader } from "../components/layout/DashboardHeader";
-import { getMaterialTypeLabel } from "../utils/reviewDisplay";
 import {
   EMPTY_REVIEW_FORM,
   GRADE_OPTIONS,
   REVIEW_STEPS,
+  buildMaterialPayload,
   createEmptyMaterial,
-  expandUsagePurposes,
+  materialToDraft,
   validateMaterialDraft,
 } from "../utils/reviewFormConstants";
 
@@ -63,8 +65,11 @@ export default function WriteReviewPage({ isEdit: isEditProp = false }) {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMaterialForm, setShowMaterialForm] = useState(false);
+  const [editingMaterialId, setEditingMaterialId] = useState(null);
+  const [editingNewIndex, setEditingNewIndex] = useState(null);
   const [draftMaterial, setDraftMaterial] = useState(createEmptyMaterial);
   const [materialErrors, setMaterialErrors] = useState({});
+  const [isSavingMaterial, setIsSavingMaterial] = useState(false);
   const [courseName, setCourseName] = useState("");
 
   useEffect(() => {
@@ -148,44 +153,112 @@ export default function WriteReviewPage({ isEdit: isEditProp = false }) {
     event.target.value = "";
   }
 
-  async function addMaterial() {
+  function closeMaterialForm() {
+    setShowMaterialForm(false);
+    setEditingMaterialId(null);
+    setEditingNewIndex(null);
+    setDraftMaterial(createEmptyMaterial());
+    setMaterialErrors({});
+  }
+
+  function openMaterialForm() {
+    setEditingMaterialId(null);
+    setEditingNewIndex(null);
+    setDraftMaterial(createEmptyMaterial());
+    setMaterialErrors({});
+    setShowMaterialForm(true);
+  }
+
+  function openEditSavedMaterial(material) {
+    setEditingMaterialId(material._id);
+    setEditingNewIndex(null);
+    setDraftMaterial(materialToDraft(material));
+    setMaterialErrors({});
+    setShowMaterialForm(true);
+  }
+
+  function openEditNewMaterial(index) {
+    setEditingMaterialId(null);
+    setEditingNewIndex(index);
+    setDraftMaterial(materialToDraft(form.materials[index]));
+    setMaterialErrors({});
+    setShowMaterialForm(true);
+  }
+
+  async function uploadDraftAttachments() {
+    let attachmentFiles = [...(draftMaterial.attachmentFiles || [])];
+    if (draftMaterial.localFiles?.length > 0) {
+      const uploadRes = await uploadFiles(draftMaterial.localFiles);
+      attachmentFiles = [...attachmentFiles, ...(uploadRes?.data?.files || [])];
+    }
+    return attachmentFiles;
+  }
+
+  async function saveMaterial() {
     const errors = validateMaterialDraft(draftMaterial);
     if (Object.keys(errors).length > 0) {
       setMaterialErrors(errors);
       return;
     }
 
-    let attachmentFiles = [...(draftMaterial.attachmentFiles || [])];
-    if (draftMaterial.localFiles?.length > 0) {
+    setIsSavingMaterial(true);
+    setError("");
+    try {
+      let attachmentFiles;
       try {
-        const uploadRes = await uploadFiles(draftMaterial.localFiles);
-        attachmentFiles = [...attachmentFiles, ...(uploadRes?.data?.files || [])];
+        attachmentFiles = await uploadDraftAttachments();
       } catch {
         setError("Không thể tải file tài liệu lên");
         return;
       }
-    }
+      const draftWithFiles = { ...draftMaterial, attachmentFiles, localFiles: [] };
+      const payload = buildMaterialPayload(draftWithFiles);
 
-    setForm((prev) => ({
-      ...prev,
-      materials: [
-        ...prev.materials,
-        {
-          ...draftMaterial,
-          attachmentFiles,
-          localFiles: [],
-        },
-      ],
-    }));
-    setDraftMaterial(createEmptyMaterial());
-    setMaterialErrors({});
-    setShowMaterialForm(false);
+      if (editingMaterialId) {
+        const res = await updateLearningMaterial(editingMaterialId, payload);
+        const updated = res?.data?.material;
+        if (updated) {
+          setSavedMaterials((prev) =>
+            prev.map((m) => (m._id === editingMaterialId ? updated : m))
+          );
+        }
+        closeMaterialForm();
+        return;
+      }
+
+      if (editingNewIndex !== null) {
+        setForm((prev) => ({
+          ...prev,
+          materials: prev.materials.map((m, i) =>
+            i === editingNewIndex ? draftWithFiles : m
+          ),
+        }));
+        closeMaterialForm();
+        return;
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        materials: [...prev.materials, draftWithFiles],
+      }));
+      closeMaterialForm();
+    } catch (err) {
+      setError(err?.response?.data?.message || "Không thể lưu tài liệu");
+    } finally {
+      setIsSavingMaterial(false);
+    }
   }
 
-  function openMaterialForm() {
-    setDraftMaterial(createEmptyMaterial());
-    setMaterialErrors({});
-    setShowMaterialForm(true);
+  async function handleDeleteSavedMaterial(materialId) {
+    if (!window.confirm("Xóa tài liệu này? Hành động không thể hoàn tác.")) return;
+    setError("");
+    try {
+      await deleteLearningMaterial(materialId);
+      setSavedMaterials((prev) => prev.filter((m) => m._id !== materialId));
+      if (editingMaterialId === materialId) closeMaterialForm();
+    } catch (err) {
+      setError(err?.response?.data?.message || "Không thể xóa tài liệu");
+    }
   }
 
   async function handleSubmit() {
@@ -225,25 +298,7 @@ export default function WriteReviewPage({ isEdit: isEditProp = false }) {
 
         if (form.materials.length) {
           await Promise.all(
-            form.materials.map((m) =>
-              createReviewMaterial(reviewId, {
-                title: m.title.trim(),
-                materialType: m.materialType,
-                source: m.source,
-                linkUrl: m.linkUrl || "",
-                authorOrPublisher: m.authorOrPublisher || "",
-                versionOrYear: m.versionOrYear || "",
-                attachmentFiles: m.attachmentFiles || [],
-                ratings: m.ratings,
-                usagePurposes: expandUsagePurposes(m.usagePurposes),
-                suitableFor: m.suitableFor,
-                contentSummary: m.contentSummary || "",
-                strengths: m.strengths || "",
-                limitations: m.limitations || "",
-                effectiveUsageGuide: m.effectiveUsageGuide || "",
-                recommendationLevel: m.recommendationLevel,
-              })
-            )
+            form.materials.map((m) => createReviewMaterial(reviewId, buildMaterialPayload(m)))
           );
         }
 
@@ -281,28 +336,10 @@ export default function WriteReviewPage({ isEdit: isEditProp = false }) {
         evidenceFiles,
       });
 
-      const reviewId = reviewRes?.data?.review?._id;
-      if (reviewId && form.materials.length) {
+      const newReviewId = reviewRes?.data?.review?._id;
+      if (newReviewId && form.materials.length) {
         await Promise.all(
-          form.materials.map((m) =>
-            createReviewMaterial(reviewId, {
-              title: m.title.trim(),
-              materialType: m.materialType,
-              source: m.source,
-              linkUrl: m.linkUrl || "",
-              authorOrPublisher: m.authorOrPublisher || "",
-              versionOrYear: m.versionOrYear || "",
-              attachmentFiles: m.attachmentFiles || [],
-              ratings: m.ratings,
-              usagePurposes: expandUsagePurposes(m.usagePurposes),
-              suitableFor: m.suitableFor,
-              contentSummary: m.contentSummary || "",
-              strengths: m.strengths || "",
-              limitations: m.limitations || "",
-              effectiveUsageGuide: m.effectiveUsageGuide || "",
-              recommendationLevel: m.recommendationLevel,
-            })
-          )
+          form.materials.map((m) => createReviewMaterial(newReviewId, buildMaterialPayload(m)))
         );
       }
 
@@ -532,61 +569,122 @@ export default function WriteReviewPage({ isEdit: isEditProp = false }) {
               </p>
 
               {savedMaterials.length > 0 && (
-                <div className="material-saved-list">
-                  <p className="muted">Tài liệu đã lưu (chỉ thêm mới bên dưới):</p>
+                <div className="review-materials review-materials--edit">
+                  <h4 className="review-subsection-title">
+                    Tài liệu đã lưu ({savedMaterials.length})
+                  </h4>
+                  <p className="muted">
+                    Bấm &quot;Sửa&quot; để chỉnh sửa (lưu ngay). Bấm tiêu đề để xem chi tiết.
+                  </p>
                   {savedMaterials.map((m) => (
-                    <div key={m._id} className="material-draft-item">
-                      <strong>{m.title}</strong>
-                      <span className="muted material-saved-meta">
-                        {getMaterialTypeLabel(m.materialType)}
-                      </span>
+                    <div key={m._id} className="material-draft-wrap">
+                      {editingMaterialId === m._id && showMaterialForm ? (
+                        <MaterialForm
+                          material={draftMaterial}
+                          errors={materialErrors}
+                          onChange={setDraftMaterial}
+                          onSave={saveMaterial}
+                          onCancel={closeMaterialForm}
+                          formTitle="Sửa tài liệu"
+                          saveLabel={isSavingMaterial ? "Đang lưu..." : "Lưu thay đổi tài liệu"}
+                          saveDisabled={isSavingMaterial}
+                        />
+                      ) : (
+                        <>
+                          <div className="material-draft-toolbar">
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => openEditSavedMaterial(m)}
+                              disabled={showMaterialForm}
+                            >
+                              Sửa
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => handleDeleteSavedMaterial(m._id)}
+                              disabled={showMaterialForm}
+                            >
+                              Xóa
+                            </button>
+                          </div>
+                          <ReviewMaterialCard material={m} />
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
 
               {form.materials.length > 0 && (
-                <div className="material-saved-list">
+                <div className="review-materials review-materials--edit">
+                  <h4 className="review-subsection-title">
+                    Tài liệu mới ({form.materials.length})
+                  </h4>
+                  <p className="muted">Sẽ được tạo khi bạn bấm &quot;Lưu thay đổi&quot; ở cuối form.</p>
                   {form.materials.map((m, index) => (
-                    <div key={index} className="material-draft-item">
-                      <div>
-                        <strong>{m.title}</strong>
-                        <span className="muted material-saved-meta">
-                          {getMaterialTypeLabel(m.materialType)}
-                          {m.authorOrPublisher ? ` • ${m.authorOrPublisher}` : ""}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setForm((p) => ({
-                            ...p,
-                            materials: p.materials.filter((_, i) => i !== index),
-                          }))
-                        }
-                      >
-                        Xóa
-                      </button>
+                    <div key={index} className="material-draft-wrap">
+                      {editingNewIndex === index && showMaterialForm && !editingMaterialId ? (
+                        <MaterialForm
+                          material={draftMaterial}
+                          errors={materialErrors}
+                          onChange={setDraftMaterial}
+                          onSave={saveMaterial}
+                          onCancel={closeMaterialForm}
+                          formTitle="Sửa tài liệu mới"
+                          saveLabel={isSavingMaterial ? "Đang lưu..." : "Cập nhật"}
+                          saveDisabled={isSavingMaterial}
+                        />
+                      ) : (
+                        <>
+                          <div className="material-draft-toolbar">
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => openEditNewMaterial(index)}
+                              disabled={showMaterialForm}
+                            >
+                              Sửa
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() =>
+                                setForm((p) => ({
+                                  ...p,
+                                  materials: p.materials.filter((_, i) => i !== index),
+                                }))
+                              }
+                              disabled={showMaterialForm}
+                            >
+                              Xóa
+                            </button>
+                          </div>
+                          <ReviewMaterialCard material={m} />
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
 
-              {showMaterialForm ? (
+              {showMaterialForm && editingMaterialId === null && editingNewIndex === null ? (
                 <MaterialForm
                   material={draftMaterial}
                   errors={materialErrors}
                   onChange={setDraftMaterial}
-                  onSave={addMaterial}
-                  onCancel={() => {
-                    setShowMaterialForm(false);
-                    setMaterialErrors({});
-                  }}
+                  onSave={saveMaterial}
+                  onCancel={closeMaterialForm}
+                  saveLabel={isSavingMaterial ? "Đang lưu..." : "Lưu tài liệu"}
+                  saveDisabled={isSavingMaterial}
                 />
               ) : (
-                <button type="button" className="add-material-zone" onClick={openMaterialForm}>
-                  + Thêm tài liệu
-                </button>
+                !showMaterialForm && (
+                  <button type="button" className="add-material-zone" onClick={openMaterialForm}>
+                    + Thêm tài liệu
+                  </button>
+                )
               )}
             </div>
           )}

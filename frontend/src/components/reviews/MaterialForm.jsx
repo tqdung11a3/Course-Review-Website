@@ -29,7 +29,16 @@ function MaterialRatingSlider({ label, value, onChange }) {
   );
 }
 
-export function MaterialForm({ material, errors, onChange, onSave, onCancel }) {
+export function MaterialForm({
+  material,
+  errors,
+  onChange,
+  onSave,
+  onCancel,
+  formTitle = "Thêm tài liệu mới",
+  saveLabel = "Lưu tài liệu",
+  saveDisabled = false,
+}) {
   const fileRef = useRef(null);
 
   function update(patch) {
@@ -55,9 +64,15 @@ export function MaterialForm({ material, errors, onChange, onSave, onCancel }) {
     });
   }
 
+  function removeAttachmentFile(index) {
+    update({
+      attachmentFiles: material.attachmentFiles.filter((_, i) => i !== index),
+    });
+  }
+
   return (
     <div className="material-form-panel">
-      <h4 className="material-form-panel-title">Thêm tài liệu mới</h4>
+      <h4 className="material-form-panel-title">{formTitle}</h4>
 
       <FormField label="Tên tài liệu" required error={errors.title}>
         <input
@@ -141,6 +156,20 @@ export function MaterialForm({ material, errors, onChange, onSave, onCancel }) {
           <p className="syllabus-dropzone-hint">PDF, DOC, PNG, JPG (tối đa 10MB)</p>
           <input ref={fileRef} type="file" multiple hidden onChange={handleFiles} />
         </div>
+        {material.attachmentFiles?.length > 0 && (
+          <ul className="syllabus-file-list">
+            {material.attachmentFiles.map((f, i) => (
+              <li key={f.fileUrl || i}>
+                <a href={f.fileUrl} target="_blank" rel="noreferrer">
+                  {f.fileName || "File đính kèm"}
+                </a>
+                <button type="button" onClick={() => removeAttachmentFile(i)}>
+                  Xóa
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
         {material.localFiles?.length > 0 && (
           <ul className="syllabus-file-list">
             {material.localFiles.map((f, i) => (
@@ -263,8 +292,8 @@ export function MaterialForm({ material, errors, onChange, onSave, onCancel }) {
         <button type="button" className="btn btn-secondary" onClick={onCancel}>
           Hủy
         </button>
-        <button type="button" className="btn btn-primary" onClick={onSave}>
-          Lưu tài liệu
+        <button type="button" className="btn btn-primary" onClick={onSave} disabled={saveDisabled}>
+          {saveLabel}
         </button>
       </div>
     </div>

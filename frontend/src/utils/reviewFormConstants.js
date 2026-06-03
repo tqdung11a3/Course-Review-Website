@@ -109,6 +109,65 @@ export function expandUsagePurposes(selected) {
   return [...new Set(result)];
 }
 
+/** Map DB values back to checkbox values in the form */
+export function collapseUsagePurposes(stored) {
+  const bundleOpt = USAGE_PURPOSE_OPTIONS.find((o) => o.expandsTo);
+  let list = [...(stored || [])];
+  if (bundleOpt && bundleOpt.expandsTo.some((v) => list.includes(v))) {
+    list = list.filter((v) => !bundleOpt.expandsTo.includes(v));
+    if (!list.includes(bundleOpt.value)) list.push(bundleOpt.value);
+  }
+  const allowed = new Set(USAGE_PURPOSE_OPTIONS.map((o) => o.value));
+  return list.filter((v) => allowed.has(v));
+}
+
+export function materialToDraft(material) {
+  const ratings = material.ratings || {};
+  return {
+    title: material.title || "",
+    materialType: material.materialType || "",
+    source: material.source || "",
+    authorOrPublisher: material.authorOrPublisher || "",
+    versionOrYear: material.versionOrYear || "",
+    linkUrl: material.linkUrl || "",
+    localFiles: [],
+    attachmentFiles: Array.isArray(material.attachmentFiles) ? [...material.attachmentFiles] : [],
+    ratings: {
+      usefulness: ratings.usefulness ?? 3,
+      readability: ratings.readability ?? 3,
+      courseRelevance: ratings.courseRelevance ?? 3,
+      necessity: ratings.necessity ?? 3,
+    },
+    usagePurposes: collapseUsagePurposes(material.usagePurposes),
+    suitableFor: [...(material.suitableFor || [])],
+    contentSummary: material.contentSummary || "",
+    strengths: material.strengths || "",
+    limitations: material.limitations || "",
+    effectiveUsageGuide: material.effectiveUsageGuide || "",
+    recommendationLevel: material.recommendationLevel || "recommended",
+  };
+}
+
+export function buildMaterialPayload(material) {
+  return {
+    title: material.title.trim(),
+    materialType: material.materialType,
+    source: material.source,
+    linkUrl: material.linkUrl || "",
+    authorOrPublisher: material.authorOrPublisher || "",
+    versionOrYear: material.versionOrYear || "",
+    attachmentFiles: material.attachmentFiles || [],
+    ratings: material.ratings,
+    usagePurposes: expandUsagePurposes(material.usagePurposes),
+    suitableFor: material.suitableFor,
+    contentSummary: material.contentSummary || "",
+    strengths: material.strengths || "",
+    limitations: material.limitations || "",
+    effectiveUsageGuide: material.effectiveUsageGuide || "",
+    recommendationLevel: material.recommendationLevel,
+  };
+}
+
 export function validateMaterialDraft(material) {
   const errors = {};
   if (!material.title?.trim()) errors.title = "Vui lòng nhập tên tài liệu";

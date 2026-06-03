@@ -1,8 +1,10 @@
 const fs = require("fs");
 const path = require("path");
 const { cloudinary, isCloudinaryEnabled } = require("../config/cloudinary");
-const env = require("../config/env");
 const { ensureUploadDir } = require("../middlewares/upload.middleware");
+
+/** PDF & Office: raw (giữ file gốc). Ảnh: image. */
+const RAW_EXTENSIONS = new Set([".pdf", ".doc", ".docx", ".ppt", ".pptx"]);
 
 function buildSafeBasename(originalname) {
   const ext = path.extname(originalname).toLowerCase();
@@ -10,12 +12,25 @@ function buildSafeBasename(originalname) {
   return { ext, base };
 }
 
+function getCloudinaryResourceType(originalname) {
+  const ext = path.extname(originalname).toLowerCase();
+  return RAW_EXTENSIONS.has(ext) ? "raw" : "image";
+}
+
 function uploadToCloudinary(file) {
+  const resourceType = getCloudinaryResourceType(file.originalname);
+  const { ext, base } = buildSafeBasename(file.originalname);
+  const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+  const publicId = `${base}-${unique}${ext}`;
+
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
         folder: "course-review",
-        resource_type: "auto",
+        resource_type: resourceType,
+        public_id: publicId,
+        filename_override: file.originalname,
+        access_mode: "public",
       },
       (error, result) => {
         if (error) return reject(error);

@@ -22,8 +22,9 @@ Kiến trúc:
 | `CLOUDINARY_API_KEY` | API Key |
 | `CLOUDINARY_API_SECRET` | API Secret |
 
-4. **Save** → đợi redeploy **Live**.
-5. **Upload lại** Syllabus / bảng điểm cho môn cũ (link `onrender.com/uploads/...` cũ không còn file).
+4. **Settings → Security** → bật **Allow delivery of PDF and ZIP files** (tài khoản free mặc định chặn PDF; bắt buộc để link `res.cloudinary.com` mở được trong trình duyệt).
+5. **Save** → đợi redeploy **Live**.
+6. **Upload lại** Syllabus / bảng điểm cho môn cũ (link `onrender.com/uploads/...` cũ không còn file).
 
 Máy dev: thêm 3 biến vào `backend/.env` (xem `backend/.env.example`). Không có Cloudinary → vẫn lưu local `uploads/` (chỉ phù hợp chạy local).
 

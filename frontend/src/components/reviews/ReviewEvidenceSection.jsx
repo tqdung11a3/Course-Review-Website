@@ -24,7 +24,12 @@ export function ReviewEvidenceSection({ review }) {
               📄
             </span>
             <div className="review-evidence-info">
-              <a href={file.fileUrl} target="_blank" rel="noreferrer" className="review-evidence-link">
+              <a
+                href={file.fileUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="review-evidence-link"
+              >
                 {file.fileName || "Xem file minh chứng"}
               </a>
               {file.fileSize > 0 && (

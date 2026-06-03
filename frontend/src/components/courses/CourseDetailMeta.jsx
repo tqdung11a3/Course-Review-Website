@@ -84,7 +84,12 @@ export function CourseDetailMeta({ course }) {
             <ul className="course-syllabus-list">
               {syllabusFiles.map((file, index) => (
                 <li key={file.fileUrl || index}>
-                  <a href={file.fileUrl} target="_blank" rel="noreferrer" className="course-syllabus-link">
+                  <a
+                    href={file.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="course-syllabus-link"
+                  >
                     📄 {file.fileName || "Tải syllabus"}
                   </a>
                 </li>

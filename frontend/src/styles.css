@@ -1622,6 +1622,21 @@ button {
   display: block;
 }
 
+.review-materials--edit {
+  margin-bottom: 20px;
+}
+
+.material-draft-wrap {
+  margin-bottom: 12px;
+}
+
+.material-draft-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
 /* Admin moderation */
 .dashboard-nav {
   display: flex;

@@ -233,11 +233,18 @@ exports.updateReview = async (req, res) => {
     if (req.body[k] !== undefined) updates[k] = req.body[k];
   }
 
-  if (updates.semester || updates.academicYear) {
+  const shouldSyncProof =
+    review.enrollmentProofId &&
+    (updates.semester || updates.academicYear || updates.evidenceFiles !== undefined);
+
+  if (shouldSyncProof) {
     const proof = await CourseProof.findById(review.enrollmentProofId);
     if (proof && String(proof.userId) === String(req.user._id)) {
       if (updates.semester) proof.semester = String(updates.semester).trim();
       if (updates.academicYear) proof.academicYear = String(updates.academicYear).trim();
+      if (updates.evidenceFiles !== undefined) {
+        proof.proofFiles = Array.isArray(updates.evidenceFiles) ? updates.evidenceFiles : [];
+      }
       await proof.save();
     }
   }

@@ -16,7 +16,6 @@ const reportRoutes = require("./routes/report.routes");
 const uploadRoutes = require("./routes/upload.routes");
 const adminRoutes = require("./routes/admin.routes");
 const notificationRoutes = require("./routes/notification.routes");
-
 const app = express();
 
 if (env.NODE_ENV === "production") {
