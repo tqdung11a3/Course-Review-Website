@@ -20,6 +20,11 @@ export async function createCourse(payload) {
   return data;
 }
 
+export async function updateCourse(id, payload) {
+  const { data } = await apiClient.put(`/api/courses/${id}`, payload);
+  return data;
+}
+
 export async function getCourseStats(id, retryOptions) {
   return withApiRetry(async () => {
     const { data } = await apiClient.get(`/api/courses/${id}/stats`);

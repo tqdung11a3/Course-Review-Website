@@ -2,21 +2,20 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { createCourseProof } from "../api/courseProofs";
 import { getCourseById } from "../api/courses";
-import { createReview, createReviewMaterial } from "../api/reviews";
+import { createReview, createReviewMaterial, getReviewById, updateReview } from "../api/reviews";
 import { uploadFiles } from "../api/uploads";
 import { FormField } from "../components/courses/form/FormField";
 import { MaterialForm } from "../components/reviews/MaterialForm";
 import { ReviewStepper } from "../components/reviews/ReviewStepper";
+import { LoadingSpinner } from "../components/common/LoadingSpinner";
 import { DashboardHeader } from "../components/layout/DashboardHeader";
 import { getMaterialTypeLabel } from "../utils/reviewDisplay";
 import {
   EMPTY_REVIEW_FORM,
   GRADE_OPTIONS,
   REVIEW_STEPS,
-  SEMESTER_REVIEW_OPTIONS,
   createEmptyMaterial,
   expandUsagePurposes,
-  parseSemesterValue,
   validateMaterialDraft,
 } from "../utils/reviewFormConstants";
 
@@ -48,12 +47,18 @@ const DETAIL_FIELDS = [
   { key: "commonDifficulties", label: "Khó khăn thường gặp", placeholder: "Những khó khăn mà sinh viên thường gặp và cách vượt qua..." },
 ];
 
-export default function WriteReviewPage() {
-  const { id: courseId } = useParams();
+export default function WriteReviewPage({ isEdit: isEditProp = false }) {
+  const { id: courseIdParam, reviewId: reviewIdParam } = useParams();
+  const isEdit = isEditProp || Boolean(reviewIdParam);
+  const reviewId = reviewIdParam;
   const navigate = useNavigate();
+  const [courseId, setCourseId] = useState(courseIdParam || "");
   const [step, setStep] = useState(1);
   const [form, setForm] = useState(EMPTY_REVIEW_FORM);
   const [proofFiles, setProofFiles] = useState([]);
+  const [existingEvidence, setExistingEvidence] = useState([]);
+  const [savedMaterials, setSavedMaterials] = useState([]);
+  const [isLoadingReview, setIsLoadingReview] = useState(isEdit);
   const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,10 +68,53 @@ export default function WriteReviewPage() {
   const [courseName, setCourseName] = useState("");
 
   useEffect(() => {
+    if (!isEdit && courseIdParam) {
+      setCourseId(courseIdParam);
+    }
+  }, [courseIdParam, isEdit]);
+
+  useEffect(() => {
+    if (!courseId) return;
     getCourseById(courseId)
       .then((res) => setCourseName(res?.data?.course?.courseName || ""))
       .catch(() => {});
   }, [courseId]);
+
+  useEffect(() => {
+    if (!isEdit || !reviewId) return;
+    async function loadReview() {
+      setIsLoadingReview(true);
+      setError("");
+      try {
+        const res = await getReviewById(reviewId);
+        const review = res?.data?.review;
+        if (!review) throw new Error("Không tìm thấy review");
+
+        const cid = review.courseId?._id || review.courseId;
+        setCourseId(String(cid));
+        setCourseName(review.courseName || review.courseId?.courseName || "");
+        setExistingEvidence(review.evidenceFiles || []);
+        setSavedMaterials(review.materials || []);
+        setForm({
+          lecturerName: review.lecturerName || "",
+          semester: review.semester || "",
+          academicYear: review.academicYear || "",
+          grade: review.grade || "",
+          proofFiles: [],
+          ratings: { ...EMPTY_REVIEW_FORM.ratings, ...review.ratings },
+          hasMandatoryAttendance: Boolean(review.hasMandatoryAttendance),
+          wouldTakeAgain: Boolean(review.wouldTakeAgain),
+          details: { ...EMPTY_REVIEW_FORM.details, ...(review.details || {}) },
+          materials: [],
+        });
+      } catch (err) {
+        setError(err?.response?.data?.message || "Không thể tải review");
+      } finally {
+        setIsLoadingReview(false);
+      }
+    }
+    loadReview();
+  }, [isEdit, reviewId]);
 
   function updateRating(key, value) {
     setForm((prev) => ({
@@ -86,7 +134,8 @@ export default function WriteReviewPage() {
     const errors = {};
     if (current === 1) {
       if (!form.lecturerName.trim()) errors.lecturerName = "Vui lòng nhập giảng viên";
-      if (!form.semesterValue) errors.semesterValue = "Vui lòng chọn học kỳ";
+      if (!form.semester.trim()) errors.semester = "Vui lòng nhập học kỳ";
+      if (!form.academicYear.trim()) errors.academicYear = "Vui lòng nhập năm học";
     }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -143,12 +192,69 @@ export default function WriteReviewPage() {
     setIsSubmitting(true);
     setError("");
     try {
-      const { semester, academicYear } = parseSemesterValue(form.semesterValue);
+      const semester = form.semester.trim();
+      const academicYear = form.academicYear.trim();
 
-      let evidenceFiles = [];
+      let evidenceFiles = [...existingEvidence];
       if (proofFiles.length > 0) {
         const uploadRes = await uploadFiles(proofFiles);
-        evidenceFiles = uploadRes?.data?.files || [];
+        evidenceFiles = [...evidenceFiles, ...(uploadRes?.data?.files || [])];
+      }
+
+      const ratingsPayload = {
+        overall: form.ratings.overall,
+        difficulty: form.ratings.difficulty,
+        workload: form.ratings.workload,
+        usefulness: form.ratings.usefulness,
+        gradingFairness: form.ratings.gradingFairness,
+        teachingQuality: form.ratings.teachingQuality,
+      };
+
+      if (isEdit && reviewId) {
+        await updateReview(reviewId, {
+          lecturerName: form.lecturerName.trim(),
+          semester,
+          academicYear,
+          grade: form.grade,
+          hasMandatoryAttendance: form.hasMandatoryAttendance,
+          wouldTakeAgain: form.wouldTakeAgain,
+          ratings: ratingsPayload,
+          details: form.details,
+          evidenceFiles,
+        });
+
+        if (form.materials.length) {
+          await Promise.all(
+            form.materials.map((m) =>
+              createReviewMaterial(reviewId, {
+                title: m.title.trim(),
+                materialType: m.materialType,
+                source: m.source,
+                linkUrl: m.linkUrl || "",
+                authorOrPublisher: m.authorOrPublisher || "",
+                versionOrYear: m.versionOrYear || "",
+                attachmentFiles: m.attachmentFiles || [],
+                ratings: m.ratings,
+                usagePurposes: expandUsagePurposes(m.usagePurposes),
+                suitableFor: m.suitableFor,
+                contentSummary: m.contentSummary || "",
+                strengths: m.strengths || "",
+                limitations: m.limitations || "",
+                effectiveUsageGuide: m.effectiveUsageGuide || "",
+                recommendationLevel: m.recommendationLevel,
+              })
+            )
+          );
+        }
+
+        navigate("/profile", {
+          replace: true,
+          state: {
+            flash:
+              "Review đã được cập nhật. Nếu trước đó bị từ chối, review sẽ chuyển về trạng thái chờ duyệt.",
+          },
+        });
+        return;
       }
 
       const proofRes = await createCourseProof({
@@ -170,14 +276,7 @@ export default function WriteReviewPage() {
         grade: form.grade,
         hasMandatoryAttendance: form.hasMandatoryAttendance,
         wouldTakeAgain: form.wouldTakeAgain,
-        ratings: {
-          overall: form.ratings.overall,
-          difficulty: form.ratings.difficulty,
-          workload: form.ratings.workload,
-          usefulness: form.ratings.usefulness,
-          gradingFairness: form.ratings.gradingFairness,
-          teachingQuality: form.ratings.teachingQuality,
-        },
+        ratings: ratingsPayload,
         details: form.details,
         evidenceFiles,
       });
@@ -230,17 +329,30 @@ export default function WriteReviewPage() {
     if (step > 1) setStep((s) => s - 1);
   }
 
+  if (isLoadingReview) {
+    return (
+      <div className="dashboard-page">
+        <DashboardHeader />
+        <div className="dashboard-content">
+          <LoadingSpinner label="Đang tải review..." />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="dashboard-page">
       <DashboardHeader />
       <div className="dashboard-content dashboard-content--form">
         <div className="write-review-card">
-          <Link to={`/courses/${courseId}`} className="back-link">
-            ← Quay lại môn học
+          <Link to={courseId ? `/courses/${courseId}` : "/profile"} className="back-link">
+            ← {isEdit ? "Quay lại" : "Quay lại môn học"}
           </Link>
-          <h1>Viết Review Môn học</h1>
+          <h1>{isEdit ? "Sửa Review" : "Viết Review Môn học"}</h1>
           <p className="muted">
-            Review của bạn sẽ giúp sinh viên khác đưa ra quyết định tốt hơn
+            {isEdit
+              ? "Cập nhật nội dung review của bạn"
+              : "Review của bạn sẽ giúp sinh viên khác đưa ra quyết định tốt hơn"}
             {courseName ? ` — ${courseName}` : ""}
           </p>
 
@@ -266,44 +378,68 @@ export default function WriteReviewPage() {
               </FormField>
 
               <div className="form-row">
-                <FormField label="Học kỳ" required error={fieldErrors.semesterValue}>
-                  <select
+                <FormField label="Học kỳ" required error={fieldErrors.semester}>
+                  <input
                     className="form-control"
-                    value={form.semesterValue}
-                    onChange={(e) => setForm((p) => ({ ...p, semesterValue: e.target.value }))}
-                  >
-                    <option value="">Chọn học kỳ</option>
-                    {SEMESTER_REVIEW_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.value}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="VD: Học kỳ 2 hoặc HK2"
+                    value={form.semester}
+                    onChange={(e) => setForm((p) => ({ ...p, semester: e.target.value }))}
+                  />
                 </FormField>
 
-                <FormField label="Điểm số (tùy chọn)">
-                  <select
+                <FormField label="Năm học" required error={fieldErrors.academicYear}>
+                  <input
                     className="form-control"
-                    value={form.grade}
-                    onChange={(e) => setForm((p) => ({ ...p, grade: e.target.value }))}
-                  >
-                    {GRADE_OPTIONS.map((g) => (
-                      <option key={g.value || "none"} value={g.value}>
-                        {g.label}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="VD: 2024-2025"
+                    value={form.academicYear}
+                    onChange={(e) => setForm((p) => ({ ...p, academicYear: e.target.value }))}
+                  />
                 </FormField>
               </div>
 
+              <FormField label="Điểm số (tùy chọn)">
+                <select
+                  className="form-control"
+                  value={form.grade}
+                  onChange={(e) => setForm((p) => ({ ...p, grade: e.target.value }))}
+                >
+                  {GRADE_OPTIONS.map((g) => (
+                    <option key={g.value || "none"} value={g.value}>
+                      {g.label}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+
               <FormField label="Minh chứng (tùy chọn)">
+                {existingEvidence.length > 0 && (
+                  <ul className="syllabus-existing-list">
+                    {existingEvidence.map((f, index) => (
+                      <li key={f.fileUrl || index} className="syllabus-existing-item">
+                        <a href={f.fileUrl} target="_blank" rel="noreferrer">
+                          {f.fileName || "Minh chứng"}
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExistingEvidence((prev) => prev.filter((_, i) => i !== index))
+                          }
+                        >
+                          Xóa
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <div
                   className="syllabus-dropzone"
                   onClick={() => document.getElementById("proof-upload")?.click()}
                   role="button"
                   tabIndex={0}
                 >
-                  <p className="syllabus-dropzone-title">Tải lên bảng điểm hoặc xác nhận đã học</p>
+                  <p className="syllabus-dropzone-title">
+                    {isEdit ? "Thêm file minh chứng mới" : "Tải lên bảng điểm hoặc xác nhận đã học"}
+                  </p>
                   <p className="syllabus-dropzone-hint">PNG, JPG, PDF (tối đa 5MB)</p>
                   <input
                     id="proof-upload"
@@ -395,6 +531,20 @@ export default function WriteReviewPage() {
                 Chia sẻ các tài liệu hữu ích để giúp sinh viên khác học tập hiệu quả hơn
               </p>
 
+              {savedMaterials.length > 0 && (
+                <div className="material-saved-list">
+                  <p className="muted">Tài liệu đã lưu (chỉ thêm mới bên dưới):</p>
+                  {savedMaterials.map((m) => (
+                    <div key={m._id} className="material-draft-item">
+                      <strong>{m.title}</strong>
+                      <span className="muted material-saved-meta">
+                        {getMaterialTypeLabel(m.materialType)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {form.materials.length > 0 && (
                 <div className="material-saved-list">
                   {form.materials.map((m, index) => (
@@ -449,7 +599,10 @@ export default function WriteReviewPage() {
                 Quay lại
               </button>
             ) : (
-              <Link to={`/courses/${courseId}`} className="btn btn-secondary">
+              <Link
+                to={isEdit ? "/profile" : `/courses/${courseId}`}
+                className="btn btn-secondary"
+              >
                 Hủy
               </Link>
             )}
@@ -464,7 +617,13 @@ export default function WriteReviewPage() {
                 disabled={isSubmitting}
                 onClick={handleSubmit}
               >
-                {isSubmitting ? "Đang gửi..." : "Gửi Review"}
+                {isSubmitting
+                  ? isEdit
+                    ? "Đang lưu..."
+                    : "Đang gửi..."
+                  : isEdit
+                    ? "Lưu thay đổi"
+                    : "Gửi Review"}
               </button>
             )}
           </div>

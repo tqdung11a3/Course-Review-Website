@@ -39,7 +39,6 @@ router.get("/:id/materials", asyncHandler(learningMaterial.listMaterialsByCourse
 router.put(
   "/:id",
   authMiddleware,
-  roleMiddleware("admin", "moderator"),
   [
     body("courseCode").optional().trim().notEmpty(),
     body("courseName").optional().trim().notEmpty(),

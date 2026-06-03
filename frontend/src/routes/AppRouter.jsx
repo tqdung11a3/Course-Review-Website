@@ -5,6 +5,7 @@ import LoginPage from "../pages/LoginPage";
 import RegisterPage from "../pages/RegisterPage";
 import CoursesPage from "../pages/CoursesPage";
 import AddCoursePage from "../pages/AddCoursePage";
+import EditCoursePage from "../pages/EditCoursePage";
 import CourseDetailPage from "../pages/CourseDetailPage";
 import WriteReviewPage from "../pages/WriteReviewPage";
 import ProfilePage from "../pages/ProfilePage";
@@ -24,7 +25,9 @@ export function AppRouter() {
         <Route path="/courses/:id" element={<CourseDetailPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/courses/new" element={<AddCoursePage />} />
+          <Route path="/courses/:id/edit" element={<EditCoursePage />} />
           <Route path="/courses/:id/reviews/new" element={<WriteReviewPage />} />
+          <Route path="/reviews/:reviewId/edit" element={<WriteReviewPage isEdit />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
 

@@ -62,7 +62,9 @@ Giá trị `role` hợp lệ: `student` | `admin` | `moderator`.
 
 **Auth:** gửi header `Authorization: Bearer <token>`.
 
-**Upload:** `POST /api/uploads` (multipart field `files`, tối đa 20 file, 10MB/file). Định dạng: pdf, doc, docx, ppt, pptx, jpg, jpeg, png. Response trả `fileUrl`, `fileName`, `fileType`, `fileSize` dùng gắn vào `proofFiles` / `evidenceFiles` / `attachmentFiles`.
+**Upload:** `POST /api/uploads` (multipart field `files`, tối đa 20 file, 10MB/file). Định dạng: pdf, doc, docx, ppt, pptx, jpg, jpeg, png. Response trả `fileUrl`, `fileName`, `fileType`, `fileSize` dùng gắn vào `proofFiles` / `evidenceFiles` / `attachmentFiles` / `syllabusFiles`.
+
+**Lưu trữ file:** Nếu cấu hình `CLOUDINARY_*` trong `.env`, file upload lên [Cloudinary](https://cloudinary.com) (`fileUrl` dạng `https://res.cloudinary.com/...`). Không cấu hình → lưu local thư mục `UPLOAD_DIR` (mặc định `uploads/`).
 
 **Luồng điển hình:** đăng ký → đăng nhập → `POST /api/uploads` → `POST /api/course-proofs` (kèm `proofFiles`) → admin duyệt `PUT /api/course-proofs/:id/approve` → `POST /api/reviews` (cần `enrollmentProofId` đã approved, đúng `courseId`, `semester`, `academicYear`) → moderator `PUT /api/reviews/:id/publish` → `POST /api/reviews/:reviewId/materials` (tuỳ chọn).
 

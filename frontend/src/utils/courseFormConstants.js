@@ -26,7 +26,7 @@ export const SEMESTER_OPTIONS = [
 export const TEACHING_LANGUAGE_OPTIONS = [
   { value: "vi", label: "Tiếng Việt" },
   { value: "en", label: "Tiếng Anh" },
-  { value: "bilingual", label: "Song ngữ" },
+  { value: "ja", label: "Tiếng Nhật" },
 ];
 
 export const LEARNING_MODE_OPTIONS = [

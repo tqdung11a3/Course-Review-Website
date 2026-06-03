@@ -175,10 +175,31 @@ exports.createCourse = async (req, res) => {
 };
 
 exports.updateCourse = async (req, res) => {
-  const updates = normalizeCoursePayload(req.body);
-  const course = await Course.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true });
+  const course = await Course.findById(req.params.id);
   if (!course) return fail(res, { message: "Course not found", status: 404 });
-  return success(res, { message: "Course updated", data: { course } });
+
+  const isStaff =
+    req.user && (req.user.role === "admin" || req.user.role === "moderator");
+  const isCreator =
+    course.createdBy && String(course.createdBy) === String(req.user._id);
+
+  if (!isStaff && !isCreator) {
+    return fail(res, {
+      message: "You can only edit courses you created",
+      status: 403,
+    });
+  }
+
+  const updates = normalizeCoursePayload(req.body);
+  delete updates.createdBy;
+
+  const updated = await Course.findByIdAndUpdate(
+    req.params.id,
+    { $set: updates },
+    { new: true }
+  );
+
+  return success(res, { message: "Course updated", data: { course: updated } });
 };
 
 exports.deleteCourse = async (req, res) => {

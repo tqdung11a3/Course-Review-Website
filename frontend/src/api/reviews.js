@@ -30,6 +30,11 @@ export async function getReviewById(id) {
   return data;
 }
 
+export async function updateReview(id, payload) {
+  const { data } = await apiClient.put(`/api/reviews/${id}`, payload);
+  return data;
+}
+
 export async function publishReview(id, moderationNote = "") {
   const { data } = await apiClient.put(`/api/reviews/${id}/publish`, { moderationNote });
   return data;

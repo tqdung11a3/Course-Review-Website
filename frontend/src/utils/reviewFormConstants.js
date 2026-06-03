@@ -125,7 +125,8 @@ export function parseSemesterValue(value) {
 
 export const EMPTY_REVIEW_FORM = {
   lecturerName: "",
-  semesterValue: "",
+  semester: "",
+  academicYear: "",
   grade: "",
   proofFiles: [],
   ratings: {

@@ -2,6 +2,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const env = require("../config/env");
+const { isCloudinaryEnabled } = require("../config/cloudinary");
 
 const ALLOWED_EXT = new Set([
   ".pdf",
@@ -26,17 +27,19 @@ function ensureUploadDir() {
   return dir;
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, ensureUploadDir());
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const base = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9-_]/g, "_");
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${base}-${unique}${ext}`);
-  },
-});
+const storage = isCloudinaryEnabled()
+  ? multer.memoryStorage()
+  : multer.diskStorage({
+      destination: (req, file, cb) => {
+        cb(null, ensureUploadDir());
+      },
+      filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        const base = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9-_]/g, "_");
+        const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+        cb(null, `${base}-${unique}${ext}`);
+      },
+    });
 
 function fileFilter(req, file, cb) {
   const ext = path.extname(file.originalname).toLowerCase();

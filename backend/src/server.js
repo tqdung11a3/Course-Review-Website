@@ -1,11 +1,17 @@
 const app = require("./app");
 const env = require("./config/env");
 const { connectDb } = require("./config/db");
+const { isCloudinaryEnabled } = require("./config/cloudinary");
 
 async function start() {
   try {
     await connectDb();
     console.log("MongoDB connected");
+    console.log(
+      isCloudinaryEnabled()
+        ? "File storage: Cloudinary"
+        : "File storage: local disk (set CLOUDINARY_* for cloud uploads)"
+    );
     app.listen(env.PORT, () => {
       console.log(`Server listening on port ${env.PORT}`);
     });

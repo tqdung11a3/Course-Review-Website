@@ -9,8 +9,15 @@ function formatScore(value) {
 }
 
 export function CourseDetailHeader({ course, stats, courseId }) {
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const location = useLocation();
+  const creatorId = course?.createdBy?._id || course?.createdBy;
+  const canEditCourse =
+    isAuthenticated &&
+    user &&
+    (String(creatorId) === String(user._id) ||
+      user.role === "admin" ||
+      user.role === "moderator");
   const ratings = stats?.averageRatings || {};
   const totalReviews = stats?.totalReviews ?? 0;
   const retake =
@@ -32,19 +39,26 @@ export function CourseDetailHeader({ course, stats, courseId }) {
             {course.description || "Chưa có mô tả cho môn học này."}
           </p>
         </div>
-        {isAuthenticated ? (
-          <Link to={`/courses/${courseId}/reviews/new`} className="btn btn-primary btn-write-review">
-            Viết Review
-          </Link>
-        ) : (
-          <Link
-            to="/login"
-            state={{ from: location }}
-            className="btn btn-primary btn-write-review"
-          >
-            Đăng nhập để viết Review
-          </Link>
-        )}
+        <div className="course-detail-actions">
+          {canEditCourse && (
+            <Link to={`/courses/${courseId}/edit`} className="btn btn-outline btn-write-review">
+              Sửa môn học
+            </Link>
+          )}
+          {isAuthenticated ? (
+            <Link to={`/courses/${courseId}/reviews/new`} className="btn btn-primary btn-write-review">
+              Viết Review
+            </Link>
+          ) : (
+            <Link
+              to="/login"
+              state={{ from: location }}
+              className="btn btn-primary btn-write-review"
+            >
+              Đăng nhập để viết Review
+            </Link>
+          )}
+        </div>
       </div>
 
       <CourseDetailMeta course={course} />

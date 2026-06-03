@@ -1,22 +1,22 @@
 const { success, fail } = require("../utils/response");
+const { storeUploadedFiles } = require("../utils/fileUpload");
 
 exports.uploadFiles = async (req, res) => {
   if (!req.files || !req.files.length) {
     return fail(res, { message: "No files uploaded", status: 400 });
   }
 
-  const baseUrl = `${req.protocol}://${req.get("host")}`;
-  const prefix = `/uploads`;
-
-  const data = req.files.map((f) => ({
-    fileUrl: `${baseUrl}${prefix}/${f.filename}`,
-    fileName: f.originalname,
-    fileType: f.mimetype,
-    fileSize: f.size,
-  }));
-
-  return success(res, {
-    message: "Files uploaded successfully",
-    data: { files: data },
-  });
+  try {
+    const files = await storeUploadedFiles(req.files, req);
+    return success(res, {
+      message: "Files uploaded successfully",
+      data: { files },
+    });
+  } catch (err) {
+    console.error("[upload]", err);
+    return fail(res, {
+      message: err?.message || "Failed to upload files",
+      status: 500,
+    });
+  }
 };

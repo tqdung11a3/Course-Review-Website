@@ -224,6 +224,9 @@ exports.updateReview = async (req, res) => {
     "evidenceFiles",
     "semester",
     "academicYear",
+    "grade",
+    "hasMandatoryAttendance",
+    "wouldTakeAgain",
   ];
   const updates = {};
   for (const k of allowed) {
@@ -232,17 +235,10 @@ exports.updateReview = async (req, res) => {
 
   if (updates.semester || updates.academicYear) {
     const proof = await CourseProof.findById(review.enrollmentProofId);
-    if (proof) {
-      const semMismatch =
-        updates.semester && String(updates.semester) !== String(proof.semester);
-      const yearMismatch =
-        updates.academicYear && String(updates.academicYear) !== String(proof.academicYear);
-      if (semMismatch || yearMismatch) {
-        return fail(res, {
-          message: "Semester and academic year must stay aligned with enrollment proof",
-          status: 400,
-        });
-      }
+    if (proof && String(proof.userId) === String(req.user._id)) {
+      if (updates.semester) proof.semester = String(updates.semester).trim();
+      if (updates.academicYear) proof.academicYear = String(updates.academicYear).trim();
+      await proof.save();
     }
   }
 

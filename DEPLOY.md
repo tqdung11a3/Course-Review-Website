@@ -5,10 +5,32 @@ Kiến trúc:
 ```
 [Trình duyệt] → Vercel (React) → Render (Express API) → MongoDB Atlas
                                       ↓
-                              thư mục uploads/ (trên server API)
+                              Cloudinary (file PDF/ảnh, khuyến nghị)
 ```
 
-**Lưu ý file upload:** Gói Render **free** có thể **mất file** khi redeploy hoặc restart. Đồ án/demo ổn; production lâu dài nên thêm [Persistent Disk](https://render.com/docs/disks) (Render trả phí) hoặc Cloudinary/S3.
+**File upload:** Cấu hình **Cloudinary** trên Render (xem mục dưới). URL file dạng `https://res.cloudinary.com/...` — **không mất** khi redeploy.
+
+### Cloudinary (bắt buộc trên Render production)
+
+1. Đăng ký [cloudinary.com](https://cloudinary.com) (free).
+2. **Dashboard** → **API Keys** → copy **Cloud name**, **API Key**, **API Secret**.
+3. Trên **Render** → service backend → **Environment** → thêm:
+
+| Key | Value |
+|-----|--------|
+| `CLOUDINARY_CLOUD_NAME` | Cloud name |
+| `CLOUDINARY_API_KEY` | API Key |
+| `CLOUDINARY_API_SECRET` | API Secret |
+
+4. **Save** → đợi redeploy **Live**.
+5. **Upload lại** Syllabus / bảng điểm cho môn cũ (link `onrender.com/uploads/...` cũ không còn file).
+
+Máy dev: thêm 3 biến vào `backend/.env` (xem `backend/.env.example`). Không có Cloudinary → vẫn lưu local `uploads/` (chỉ phù hợp chạy local).
+
+### Link cũ `onrender.com/uploads/...` báo lỗi
+
+- File upload **trước khi** bật Cloudinary nằm trên ổ Render (đã mất).
+- Cần **upload lại** tài liệu; link mới sẽ là `res.cloudinary.com`.
 
 ---
 
@@ -71,6 +93,9 @@ Trong tab **Environment** của service, thêm:
 | `JWT_SECRET` | Chuỗi ngẫu nhiên dài (≥ 32 ký tự), ví dụ tạo bằng PowerShell: `[Convert]::ToBase64String((1..48\|%{Get-Random -Max 256}))` |
 | `JWT_EXPIRES_IN` | `7d` |
 | `UPLOAD_DIR` | `uploads` |
+| `CLOUDINARY_CLOUD_NAME` | Từ Cloudinary Dashboard |
+| `CLOUDINARY_API_KEY` | Từ Cloudinary Dashboard |
+| `CLOUDINARY_API_SECRET` | Từ Cloudinary Dashboard |
 
 **Không** commit file `.env` lên Git.
 

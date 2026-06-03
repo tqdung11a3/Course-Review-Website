@@ -155,6 +155,12 @@ export default function ProfilePage() {
                           )}
                         </div>
                         <div className="my-review-actions">
+                          <Link
+                            to={`/reviews/${r._id}/edit`}
+                            className="btn btn-outline btn-sm"
+                          >
+                            Sửa
+                          </Link>
                           <button
                             type="button"
                             className="btn btn-outline btn-sm"
