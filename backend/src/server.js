@@ -2,6 +2,7 @@ const app = require("./app");
 const env = require("./config/env");
 const { connectDb } = require("./config/db");
 const { isCloudinaryEnabled } = require("./config/cloudinary");
+const { verifyConnection } = require("./utils/mailer");
 
 async function start() {
   try {
@@ -12,6 +13,13 @@ async function start() {
         ? "File storage: Cloudinary"
         : "File storage: local disk (set CLOUDINARY_* for cloud uploads)"
     );
+
+    try {
+      await verifyConnection();
+    } catch (mailErr) {
+      console.error("[mailer] ❌ Lỗi kết nối SMTP:", mailErr.message);
+    }
+
     app.listen(env.PORT, () => {
       console.log(`Server listening on port ${env.PORT}`);
     });

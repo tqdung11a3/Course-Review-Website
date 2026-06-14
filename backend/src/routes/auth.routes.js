@@ -65,6 +65,25 @@ router.post(
   asyncHandler(auth.login)
 );
 
+router.post(
+  "/verify-email",
+  [
+    body("email").isEmail().withMessage("Valid email is required"),
+    body("otpCode").trim().isLength({ min: 6, max: 6 }).withMessage("OTP must be 6 digits"),
+  ],
+  validateRequest,
+  asyncHandler(auth.verifyEmail)
+);
+
+router.post(
+  "/resend-otp",
+  [
+    body("email").isEmail().withMessage("Valid email is required"),
+  ],
+  validateRequest,
+  asyncHandler(auth.resendOtp)
+);
+
 router.post("/logout", authMiddleware, asyncHandler(auth.logout));
 router.get("/me", authMiddleware, asyncHandler(auth.me));
 router.put("/profile", authMiddleware, asyncHandler(auth.updateProfile));

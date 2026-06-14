@@ -11,6 +11,7 @@ import WriteReviewPage from "../pages/WriteReviewPage";
 import ProfilePage from "../pages/ProfilePage";
 import AdminModerationPage from "../pages/AdminModerationPage";
 import NotFoundPage from "../pages/NotFoundPage";
+import VerifyPage from "../pages/VerifyPage";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { RoleRoute } from "./RoleRoute";
 
@@ -21,6 +22,7 @@ export function AppRouter() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/verify" element={<VerifyPage />} />
         <Route path="/courses" element={<CoursesPage />} />
         <Route path="/courses/:id" element={<CourseDetailPage />} />
         <Route element={<ProtectedRoute />}>

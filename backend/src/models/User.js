@@ -25,6 +25,10 @@ const userSchema = new mongoose.Schema(
     },
     isVerifiedStudent: { type: Boolean, default: false },
     avatarUrl: { type: String, default: "" },
+    isEmailVerified: { type: Boolean, default: false },
+    emailOtpHash: { type: String, select: false },
+    emailOtpExpiresAt: { type: Date, select: false },
+    emailOtpAttempts: { type: Number, default: 0, select: false },
   },
   { timestamps: true }
 );

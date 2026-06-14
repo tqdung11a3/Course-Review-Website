@@ -228,6 +228,109 @@ button {
   font-weight: 600;
 }
 
+/* ── Verify OTP Page ──────────────────────────────────────────── */
+.verify-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 4px 0;
+}
+
+.verify-desc {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #42526e;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.otp-row {
+  display: flex;
+  gap: 10px;
+}
+
+.otp-row.otp-shake {
+  animation: otp-shake 0.5s ease;
+}
+
+@keyframes otp-shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-8px); }
+  40%       { transform: translateX(8px); }
+  60%       { transform: translateX(-6px); }
+  80%       { transform: translateX(6px); }
+}
+
+.otp-box {
+  width: 46px;
+  height: 54px;
+  border: 2px solid #dfe3eb;
+  border-radius: 10px;
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-align: center;
+  color: #172b4d;
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  outline: none;
+}
+
+.otp-box:focus {
+  border-color: #0b5fff;
+  box-shadow: 0 0 0 3px rgba(11, 95, 255, 0.12);
+}
+
+.otp-box.filled {
+  border-color: #0b5fff;
+  background: #f0f6ff;
+}
+
+.otp-box.otp-err {
+  border-color: #d32f2f;
+  background: #fff5f5;
+}
+
+.verify-timer {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #6b778c;
+}
+
+.verify-expired {
+  color: #d32f2f;
+  font-weight: 600;
+}
+
+.resend-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: #6b778c;
+}
+
+.resend-btn {
+  background: none;
+  border: none;
+  color: #0b5fff;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.15s;
+}
+
+.resend-btn:disabled {
+  color: #97a0af;
+  cursor: not-allowed;
+}
+
+.resend-btn:not(:disabled):hover {
+  text-decoration: underline;
+}
+
+
 /* Dashboard / courses */
 .dashboard-page {
   min-height: 100vh;
