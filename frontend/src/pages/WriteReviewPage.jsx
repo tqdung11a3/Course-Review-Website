@@ -109,6 +109,7 @@ export default function WriteReviewPage({ isEdit: isEditProp = false }) {
           ratings: { ...EMPTY_REVIEW_FORM.ratings, ...review.ratings },
           hasMandatoryAttendance: Boolean(review.hasMandatoryAttendance),
           wouldTakeAgain: Boolean(review.wouldTakeAgain),
+          isAnonymous: Boolean(review.isAnonymous),
           details: { ...EMPTY_REVIEW_FORM.details, ...(review.details || {}) },
           materials: [],
         });
@@ -291,6 +292,7 @@ export default function WriteReviewPage({ isEdit: isEditProp = false }) {
           grade: form.grade,
           hasMandatoryAttendance: form.hasMandatoryAttendance,
           wouldTakeAgain: form.wouldTakeAgain,
+          isAnonymous: form.isAnonymous,
           ratings: ratingsPayload,
           details: form.details,
           evidenceFiles,
@@ -331,6 +333,7 @@ export default function WriteReviewPage({ isEdit: isEditProp = false }) {
         grade: form.grade,
         hasMandatoryAttendance: form.hasMandatoryAttendance,
         wouldTakeAgain: form.wouldTakeAgain,
+        isAnonymous: form.isAnonymous,
         ratings: ratingsPayload,
         details: form.details,
         evidenceFiles,
@@ -448,6 +451,15 @@ export default function WriteReviewPage({ isEdit: isEditProp = false }) {
                 </select>
               </FormField>
 
+              <label className="checkbox-item">
+                <input
+                  type="checkbox"
+                  checked={form.isAnonymous}
+                  onChange={(e) => setForm((p) => ({ ...p, isAnonymous: e.target.checked }))}
+                />
+                <span>Đăng review ẩn danh</span>
+              </label>
+
               <FormField label="Minh chứng (tùy chọn)">
                 {existingEvidence.length > 0 && (
                   <ul className="syllabus-existing-list">
@@ -521,18 +533,6 @@ export default function WriteReviewPage({ isEdit: isEditProp = false }) {
                 value={form.ratings.teachingQuality}
                 onChange={(v) => updateRating("teachingQuality", v)}
               />
-
-              <h3 className="review-step-heading">Nội dung chi tiết</h3>
-              <label className="checkbox-item">
-                <input
-                  type="checkbox"
-                  checked={form.hasMandatoryAttendance}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, hasMandatoryAttendance: e.target.checked }))
-                  }
-                />
-                <span>Môn này có điểm danh bắt buộc</span>
-              </label>
             </div>
           )}
 
@@ -550,14 +550,6 @@ export default function WriteReviewPage({ isEdit: isEditProp = false }) {
                   />
                 </FormField>
               ))}
-              <label className="checkbox-item">
-                <input
-                  type="checkbox"
-                  checked={form.wouldTakeAgain}
-                  onChange={(e) => setForm((p) => ({ ...p, wouldTakeAgain: e.target.checked }))}
-                />
-                <span>Tôi sẽ học lại môn này nếu có cơ hội</span>
-              </label>
             </div>
           )}
 

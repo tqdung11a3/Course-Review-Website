@@ -207,5 +207,6 @@ export const EMPTY_REVIEW_FORM = {
     commonDifficulties: "",
   },
   wouldTakeAgain: false,
+  isAnonymous: false,
   materials: [],
 };

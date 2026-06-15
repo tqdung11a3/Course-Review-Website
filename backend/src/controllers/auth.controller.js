@@ -27,7 +27,7 @@ function toPublicUser(userDoc) {
 // ─── REGISTER ─────────────────────────────────────────────────────────────────
 // Chỉ lưu tạm vào PendingUser, CHƯA tạo User thật
 exports.register = async (req, res) => {
-  const { fullName, email, role, password, studentId, university, faculty, major, academicYear } =
+  const { fullName, email, password, studentId, university, faculty, major, academicYear } =
     req.body;
 
   const normalizedEmail = String(email).toLowerCase().trim();
@@ -38,7 +38,16 @@ exports.register = async (req, res) => {
     });
   }
 
-  const normalizedRole = String(role || "student").trim().toLowerCase();
+  const normalizedRole = "student";
+  if (
+    req.body.role &&
+    String(req.body.role).trim().toLowerCase() !== "student"
+  ) {
+    return fail(res, {
+      message: "Registration is only available for students",
+      status: 403,
+    });
+  }
 
   // Kiểm tra email đã tồn tại trong User thật chưa
   const existsUser = await User.findOne({ email: normalizedEmail, role: normalizedRole });
@@ -48,15 +57,13 @@ exports.register = async (req, res) => {
 
   const trimmedStudentId = String(studentId || "").trim();
 
-  if (normalizedRole === "student" && !trimmedStudentId) {
+  if (!trimmedStudentId) {
     return fail(res, { message: "studentId is required for students", status: 400 });
   }
 
-  if (normalizedRole === "student" && trimmedStudentId) {
-    const existsStudentId = await User.findOne({ studentId: trimmedStudentId, role: "student" });
-    if (existsStudentId) {
-      return fail(res, { message: "Student ID already registered", status: 409 });
-    }
+  const existsStudentId = await User.findOne({ studentId: trimmedStudentId, role: "student" });
+  if (existsStudentId) {
+    return fail(res, { message: "Student ID already registered", status: 409 });
   }
 
   const passwordHash = await bcrypt.hash(password, 12);

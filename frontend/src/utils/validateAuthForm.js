@@ -20,7 +20,7 @@ export function validateRegisterForm(form) {
     errors.email = `Chỉ chấp nhận email trường ${SCHOOL_EMAIL_SUFFIX}`;
   }
 
-  if (form.role === "student" && !form.studentId?.trim()) {
+  if (!form.studentId?.trim()) {
     errors.studentId = "Vui lòng nhập mã sinh viên";
   }
 

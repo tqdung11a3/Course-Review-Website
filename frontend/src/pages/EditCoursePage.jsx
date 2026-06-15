@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { getCourseById, getCourses, updateCourse } from "../api/courses";
+import { getCourseById, updateCourse } from "../api/courses";
 import { uploadFiles } from "../api/uploads";
 import { CheckboxGroup } from "../components/courses/form/CheckboxGroup";
 import { FormField } from "../components/courses/form/FormField";
@@ -37,7 +37,6 @@ export default function EditCoursePage() {
   const [form, setForm] = useState(EMPTY_COURSE_FORM);
   const [existingSyllabus, setExistingSyllabus] = useState([]);
   const [syllabusFiles, setSyllabusFiles] = useState([]);
-  const [prerequisiteOptions, setPrerequisiteOptions] = useState([]);
   const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -48,10 +47,7 @@ export default function EditCoursePage() {
       setIsLoading(true);
       setError("");
       try {
-        const [courseRes, coursesRes] = await Promise.all([
-          getCourseById(id),
-          getCourses({ page: 1, limit: 100 }),
-        ]);
+        const courseRes = await getCourseById(id);
         const course = courseRes?.data?.course;
         if (!course) {
           setError("Không tìm thấy môn học");
@@ -60,16 +56,6 @@ export default function EditCoursePage() {
         const mapped = mapCourseToForm(course);
         if (mapped) setForm(mapped);
         setExistingSyllabus(course.syllabusFiles || []);
-
-        const items = coursesRes?.data?.items || [];
-        setPrerequisiteOptions(
-          items
-            .filter((c) => String(c._id) !== String(id))
-            .map((c) => ({
-              value: c._id,
-              label: `${c.courseCode} - ${c.courseName}`,
-            }))
-        );
       } catch (err) {
         setError(err?.response?.data?.message || "Không thể tải môn học");
       } finally {
@@ -271,15 +257,6 @@ export default function EditCoursePage() {
                   onChange={(e) => updateField("description", e.target.value)}
                 />
               </FormField>
-              {prerequisiteOptions.length > 0 && (
-                <FormField label="Môn tiên quyết">
-                  <CheckboxGroup
-                    options={prerequisiteOptions}
-                    values={form.prerequisiteCourseIds}
-                    onChange={(v) => updateField("prerequisiteCourseIds", v)}
-                  />
-                </FormField>
-              )}
               <FormField label="Hình thức đánh giá">
                 <CheckboxGroup
                   options={ASSESSMENT_OPTIONS}

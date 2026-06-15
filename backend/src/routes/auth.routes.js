@@ -25,20 +25,10 @@ router.post(
         }
         return true;
       }),
-    body("role")
+    body("studentId")
+      .trim()
       .notEmpty()
-      .withMessage("role is required")
-      .isIn(["student", "admin", "moderator"])
-      .withMessage("role must be student, admin, or moderator"),
-    body("studentId").custom((value, { req }) => {
-      const role = String(req.body.role || "")
-        .trim()
-        .toLowerCase();
-      if (role === "student" && !String(value || "").trim()) {
-        throw new Error("studentId is required for students");
-      }
-      return true;
-    }),
+      .withMessage("studentId is required"),
     body("password").isLength({ min: 6 }).withMessage("Password min 6 characters"),
     body("confirmPassword")
       .notEmpty()

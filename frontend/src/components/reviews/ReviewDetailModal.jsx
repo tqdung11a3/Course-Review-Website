@@ -12,7 +12,7 @@ const STATUS_LABELS = {
   hidden: { text: "Đã ẩn", className: "status-rejected" },
 };
 
-export function ReviewDetailModal({ reviewId, onClose, footer }) {
+export function ReviewDetailModal({ reviewId, onClose, footer, showVoting = true }) {
   const [review, setReview] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -67,7 +67,7 @@ export function ReviewDetailModal({ reviewId, onClose, footer }) {
                 </div>
               )}
               <ReviewEvidenceSection review={review} />
-              <ReviewCard review={review} />
+              <ReviewCard review={review} showVoting={showVoting} />
             </>
           ) : null}
           {error && review && <p className="error">{error}</p>}

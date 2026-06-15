@@ -7,6 +7,9 @@ const API_ERROR_MAP = {
   "Only school emails (@sis.hust.edu.vn) are accepted":
     "Chỉ chấp nhận email trường @sis.hust.edu.vn",
   "studentId is required for students": "Vui lòng nhập mã sinh viên",
+  "studentId is required": "Vui lòng nhập mã sinh viên",
+  "Registration is only available for students":
+    "Đăng ký chỉ dành cho sinh viên. Tài khoản quản trị do hệ thống cấp.",
   "confirmPassword does not match password": "Mật khẩu xác nhận không khớp",
 };
 

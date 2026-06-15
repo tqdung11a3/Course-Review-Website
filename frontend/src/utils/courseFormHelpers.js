@@ -31,9 +31,6 @@ export function mapCourseToForm(course) {
     teachingLanguage: labelToOptionValue(TEACHING_LANGUAGE_OPTIONS, course.teachingLanguage),
     learningMode: labelToOptionValue(LEARNING_MODE_OPTIONS, course.learningMode),
     description: course.description || "",
-    prerequisiteCourseIds: (course.prerequisiteCourseIds || []).map((p) =>
-      typeof p === "object" ? String(p._id) : String(p)
-    ),
     assessmentMethods: labelsToValues(ASSESSMENT_OPTIONS, course.assessmentMethods),
   };
 }
@@ -57,7 +54,6 @@ export function buildCoursePayload(form, syllabusFiles = []) {
     learningMode:
       LEARNING_MODE_OPTIONS.find((o) => o.value === form.learningMode)?.label || form.learningMode,
     description: form.description.trim(),
-    prerequisiteCourseIds: form.prerequisiteCourseIds,
     assessmentMethods: form.assessmentMethods.map(
       (v) => ASSESSMENT_OPTIONS.find((o) => o.value === v)?.label || v
     ),

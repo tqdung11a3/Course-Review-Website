@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { AuthCard } from "../components/auth/AuthCard";
 import { AuthInput } from "../components/auth/AuthInput";
 import { IconIdCard, IconLock, IconMail, IconUser } from "../components/auth/AuthIcons";
-import { RoleToggle } from "../components/auth/RoleToggle";
 import { useAuth } from "../hooks/useAuth";
 import { AUTH_ROLES, SCHOOL_EMAIL_SUFFIX } from "../utils/authConstants";
 import { translateAuthError } from "../utils/authErrorMessages";
@@ -15,7 +14,6 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     fullName: "",
     email: "",
-    role: AUTH_ROLES.student,
     studentId: "",
     password: "",
     confirmPassword: "",
@@ -44,8 +42,8 @@ export default function RegisterPage() {
       const res = await register({
         fullName: form.fullName.trim(),
         email: form.email.trim(),
-        role: form.role,
-        studentId: form.role === AUTH_ROLES.student ? form.studentId.trim() : "",
+        role: AUTH_ROLES.student,
+        studentId: form.studentId.trim(),
         password: form.password,
         confirmPassword: form.confirmPassword,
       });
@@ -61,7 +59,7 @@ export default function RegisterPage() {
 
   return (
     <AuthCard
-      title="Đăng ký"
+      title="Đăng ký sinh viên"
       footer={
         <p className="auth-footer">
           Đã có tài khoản?{" "}
@@ -98,23 +96,16 @@ export default function RegisterPage() {
           error={fieldErrors.email}
         />
 
-        <RoleToggle
-          value={form.role}
-          onChange={(role) => updateField("role", role)}
+        <AuthInput
+          id="register-studentId"
+          label="Mã sinh viên"
+          required
+          placeholder="20210001"
+          icon={<IconIdCard />}
+          value={form.studentId}
+          onChange={(e) => updateField("studentId", e.target.value)}
+          error={fieldErrors.studentId}
         />
-
-        {form.role === AUTH_ROLES.student && (
-          <AuthInput
-            id="register-studentId"
-            label="Mã sinh viên"
-            required
-            placeholder="20210001"
-            icon={<IconIdCard />}
-            value={form.studentId}
-            onChange={(e) => updateField("studentId", e.target.value)}
-            error={fieldErrors.studentId}
-          />
-        )}
 
         <AuthInput
           id="register-password"

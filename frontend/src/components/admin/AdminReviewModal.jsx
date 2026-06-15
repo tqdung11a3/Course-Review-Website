@@ -66,6 +66,7 @@ export function AdminReviewModal({ reviewId, onClose, onActionDone }) {
     <ReviewDetailModal
       reviewId={reviewId}
       onClose={onClose}
+      showVoting={false}
       footer={
         <>
           {error && <p className="error" style={{ marginRight: "auto" }}>{error}</p>}

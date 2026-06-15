@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { createCourse, getCourses } from "../api/courses";
+import { createCourse } from "../api/courses";
 import { uploadFiles } from "../api/uploads";
 import { CheckboxGroup } from "../components/courses/form/CheckboxGroup";
 import { FormField } from "../components/courses/form/FormField";
@@ -11,9 +11,7 @@ import { DashboardHeader } from "../components/layout/DashboardHeader";
 import {
   ASSESSMENT_OPTIONS,
   COURSE_TYPE_OPTIONS,
-  CREDIT_OPTIONS,
   EMPTY_COURSE_FORM,
-  FACULTY_OPTIONS,
   LEARNING_MODE_OPTIONS,
   SEMESTER_OPTIONS,
   TEACHING_LANGUAGE_OPTIONS,
@@ -33,28 +31,9 @@ export default function AddCoursePage() {
   const navigate = useNavigate();
   const [form, setForm] = useState(EMPTY_COURSE_FORM);
   const [syllabusFiles, setSyllabusFiles] = useState([]);
-  const [prerequisiteOptions, setPrerequisiteOptions] = useState([]);
   const [fieldErrors, setFieldErrors] = useState({});
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    async function loadPrerequisites() {
-      try {
-        const response = await getCourses({ page: 1, limit: 100 });
-        const items = response?.data?.items || [];
-        setPrerequisiteOptions(
-          items.map((c) => ({
-            value: c._id,
-            label: `${c.courseCode} - ${c.courseName}`,
-          }))
-        );
-      } catch {
-        setPrerequisiteOptions([]);
-      }
-    }
-    loadPrerequisites();
-  }, []);
 
   function updateField(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -98,7 +77,6 @@ export default function AddCoursePage() {
           LEARNING_MODE_OPTIONS.find((o) => o.value === form.learningMode)?.label ||
           form.learningMode,
         description: form.description.trim(),
-        prerequisiteCourseIds: form.prerequisiteCourseIds,
         assessmentMethods: form.assessmentMethods.map(
           (v) => ASSESSMENT_OPTIONS.find((o) => o.value === v)?.label || v
         ),
@@ -147,33 +125,24 @@ export default function AddCoursePage() {
 
               <div className="form-row">
                 <FormField label="Số tín chỉ" required error={fieldErrors.credits}>
-                  <select
+                  <input
                     className="form-control"
+                    type="number"
+                    min={0}
+                    step={1}
+                    placeholder="VD: 3"
                     value={form.credits}
                     onChange={(e) => updateField("credits", e.target.value)}
-                  >
-                    <option value="">Chọn số tín chỉ</option>
-                    {CREDIT_OPTIONS.map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </FormField>
 
                 <FormField label="Khoa / Bộ môn" required error={fieldErrors.faculty}>
-                  <select
+                  <input
                     className="form-control"
+                    placeholder="VD: Công nghệ thông tin"
                     value={form.faculty}
                     onChange={(e) => updateField("faculty", e.target.value)}
-                  >
-                    <option value="">Chọn khoa</option>
-                    {FACULTY_OPTIONS.map((f) => (
-                      <option key={f} value={f}>
-                        {f}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </FormField>
               </div>
 
@@ -253,16 +222,6 @@ export default function AddCoursePage() {
                   onChange={(e) => updateField("description", e.target.value)}
                 />
               </FormField>
-
-              {prerequisiteOptions.length > 0 && (
-                <FormField label="Môn tiên quyết">
-                  <CheckboxGroup
-                    options={prerequisiteOptions}
-                    values={form.prerequisiteCourseIds}
-                    onChange={(v) => updateField("prerequisiteCourseIds", v)}
-                  />
-                </FormField>
-              )}
 
               <FormField label="Hình thức đánh giá">
                 <CheckboxGroup

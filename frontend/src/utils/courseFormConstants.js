@@ -55,6 +55,5 @@ export const EMPTY_COURSE_FORM = {
   teachingLanguage: "",
   learningMode: "",
   description: "",
-  prerequisiteCourseIds: [],
   assessmentMethods: [],
 };

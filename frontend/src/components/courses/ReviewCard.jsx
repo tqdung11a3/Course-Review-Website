@@ -12,7 +12,7 @@ import { ReviewEvidenceSection } from "../reviews/ReviewEvidenceSection";
 import { ReviewDetailSection } from "./ReviewDetailSection";
 import { ReviewMaterialCard } from "./ReviewMaterialCard";
 
-export function ReviewCard({ review, onVoteChange }) {
+export function ReviewCard({ review, onVoteChange, showVoting = true }) {
   const { user, isAuthenticated } = useAuth();
   const [helpfulCount, setHelpfulCount] = useState(review.helpfulCount || 0);
   const [notHelpfulCount, setNotHelpfulCount] = useState(review.notHelpfulCount || 0);
@@ -20,7 +20,9 @@ export function ReviewCard({ review, onVoteChange }) {
   const [voteError, setVoteError] = useState("");
   const [isVoting, setIsVoting] = useState(false);
 
-  const userName = review.userId?.fullName || "Ẩn danh";
+  const showAsAnonymous =
+    review.isAnonymous && (!review.userId || !review.userId?.fullName);
+  const userName = showAsAnonymous ? "Ẩn danh" : review.userId?.fullName || "Ẩn danh";
   const details = review.details || {};
   const ratings = review.ratings || {};
   const authorId = review.userId?._id || review.userId;
@@ -72,7 +74,9 @@ export function ReviewCard({ review, onVoteChange }) {
     <article className="review-card">
       <div className="review-card-header">
         <div className="review-author">
-          <span className="review-avatar">{getUserInitial(review.userId)}</span>
+          <span className="review-avatar">
+            {showAsAnonymous ? "?" : getUserInitial(review.userId)}
+          </span>
           <div>
             <div className="review-author-name">
               <strong>{userName}</strong>
@@ -140,34 +144,36 @@ export function ReviewCard({ review, onVoteChange }) {
       )}
 
       <div className="review-card-footer">
-        <div className="review-votes">
-          <button
-            type="button"
-            className={`review-vote-btn ${userVote === "helpful" ? "review-vote-btn--active" : ""}`}
-            disabled={isVoting || isOwnReview}
-            onClick={() => handleVote("helpful")}
-          >
-            👍 Hữu ích ({helpfulCount})
-          </button>
-          <button
-            type="button"
-            className={`review-vote-btn ${
-              userVote === "not_helpful" ? "review-vote-btn--active-not" : ""
-            }`}
-            disabled={isVoting || isOwnReview}
-            onClick={() => handleVote("not_helpful")}
-          >
-            👎 Không hữu ích ({notHelpfulCount})
-          </button>
-          {!isAuthenticated && (
-            <Link to="/login" className="review-vote-login">
-              Đăng nhập để đánh giá
-            </Link>
-          )}
-        </div>
+        {showVoting ? (
+          <div className="review-votes">
+            <button
+              type="button"
+              className={`review-vote-btn ${userVote === "helpful" ? "review-vote-btn--active" : ""}`}
+              disabled={isVoting || isOwnReview}
+              onClick={() => handleVote("helpful")}
+            >
+              👍 Hữu ích ({helpfulCount})
+            </button>
+            <button
+              type="button"
+              className={`review-vote-btn ${
+                userVote === "not_helpful" ? "review-vote-btn--active-not" : ""
+              }`}
+              disabled={isVoting || isOwnReview}
+              onClick={() => handleVote("not_helpful")}
+            >
+              👎 Không hữu ích ({notHelpfulCount})
+            </button>
+            {!isAuthenticated && (
+              <Link to="/login" className="review-vote-login">
+                Đăng nhập để đánh giá
+              </Link>
+            )}
+          </div>
+        ) : null}
         <time className="review-date">{formatReviewDate(review.createdAt)}</time>
       </div>
-      {voteError && <p className="auth-field-error">{voteError}</p>}
+      {showVoting && voteError && <p className="auth-field-error">{voteError}</p>}
     </article>
   );
 }
