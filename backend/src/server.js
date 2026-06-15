@@ -14,14 +14,12 @@ async function start() {
         : "File storage: local disk (set CLOUDINARY_* for cloud uploads)"
     );
 
-    try {
-      await verifyConnection();
-    } catch (mailErr) {
-      console.error("[mailer] ❌ Lỗi kết nối SMTP:", mailErr.message);
-    }
-
-    app.listen(env.PORT, () => {
+    app.listen(env.PORT, "0.0.0.0", () => {
       console.log(`Server listening on port ${env.PORT}`);
+    });
+
+    verifyConnection().catch((mailErr) => {
+      console.error("[mailer] ❌ Lỗi kết nối SMTP:", mailErr.message);
     });
   } catch (err) {
     console.error("Failed to start server", err);
