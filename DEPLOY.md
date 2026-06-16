@@ -28,6 +28,25 @@ Kiến trúc:
 
 Máy dev: thêm 3 biến vào `backend/.env` (xem `backend/.env.example`). Không có Cloudinary → vẫn lưu local `uploads/` (chỉ phù hợp chạy local).
 
+### Gmail App Password (bắt buộc để gửi OTP)
+
+Backend dùng **Gmail SMTP + Nodemailer** để gửi mã xác thực (OTP). Gmail **không cho phép** dùng mật khẩu đăng nhập thông thường — phải dùng **App Password**.
+
+1. Đăng nhập vào Gmail muốn dùng gửi mail → vào [myaccount.google.com/security](https://myaccount.google.com/security).
+2. Bật **2-Step Verification** (bắt buộc trước khi tạo App Password).
+3. Vào [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords).
+4. Phần **App name** → gõ `ReviewMon` → bấm **Create**.
+5. Copy **16 ký tự** hiển thị (ví dụ: `abcdefghijklmnop`) — chỉ hiện 1 lần.
+6. Trên **Render** → service backend → **Environment** → thêm:
+
+| Key | Value |
+|-----|-------|
+| `SMTP_USER` | Địa chỉ Gmail của bạn (vd: `reviewmon@gmail.com`) |
+| `SMTP_PASS` | 16 ký tự App Password (không có khoảng trắng) |
+| `SMTP_FROM` | `ReviewMon <reviewmon@gmail.com>` |
+
+7. **Save** → Render tự restart service.
+
 ### Link cũ `onrender.com/uploads/...` báo lỗi
 
 - File upload **trước khi** bật Cloudinary nằm trên ổ Render (đã mất).
@@ -97,6 +116,9 @@ Trong tab **Environment** của service, thêm:
 | `CLOUDINARY_CLOUD_NAME` | Từ Cloudinary Dashboard |
 | `CLOUDINARY_API_KEY` | Từ Cloudinary Dashboard |
 | `CLOUDINARY_API_SECRET` | Từ Cloudinary Dashboard |
+| `SMTP_USER` | Gmail dùng gửi OTP (vd: `reviewmon@gmail.com`) |
+| `SMTP_PASS` | **Gmail App Password** 16 ký tự (xem hướng dẫn bên dưới) |
+| `SMTP_FROM` | `ReviewMon <reviewmon@gmail.com>` (hoặc chỉ email) |
 
 **Không** commit file `.env` lên Git.
 
