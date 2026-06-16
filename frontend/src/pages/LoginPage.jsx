@@ -47,14 +47,7 @@ export default function LoginPage() {
       const nextPath = location.state?.from?.pathname || "/courses";
       navigate(nextPath, { replace: true });
     } catch (err) {
-      const data = err?.response?.data;
-      // Tài khoản chưa verify → chuyển sang trang xác thực
-      if (data?.data?.requiresVerification) {
-        sessionStorage.setItem("pendingVerifyEmail", data.data.email || form.email.trim());
-        navigate("/verify", { replace: true });
-        return;
-      }
-      setError(translateAuthError(data?.message) || "Đăng nhập thất bại");
+      setError(translateAuthError(err?.response?.data?.message) || "Đăng nhập thất bại");
     } finally {
       setIsSubmitting(false);
     }

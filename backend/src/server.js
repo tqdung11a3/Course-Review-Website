@@ -2,7 +2,6 @@ const app = require("./app");
 const env = require("./config/env");
 const { connectDb } = require("./config/db");
 const { isCloudinaryEnabled } = require("./config/cloudinary");
-const { verifyConnection } = require("./utils/mailer");
 
 async function start() {
   try {
@@ -16,10 +15,6 @@ async function start() {
 
     app.listen(env.PORT, "0.0.0.0", () => {
       console.log(`Server listening on port ${env.PORT}`);
-    });
-
-    verifyConnection().catch((mailErr) => {
-      console.error("[mailer] ❌ Lỗi kết nối SMTP:", mailErr.message);
     });
   } catch (err) {
     console.error("Failed to start server", err);

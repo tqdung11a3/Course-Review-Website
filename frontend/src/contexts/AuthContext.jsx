@@ -1,13 +1,5 @@
 import { createContext, useEffect, useMemo, useState } from "react";
-import {
-  clearToken,
-  getMe,
-  login,
-  register,
-  verifyEmail,
-  resendOtp as apiResendOtp,
-  saveToken,
-} from "../api/auth";
+import { clearToken, getMe, login, register, saveToken } from "../api/auth";
 import { TOKEN_KEY } from "../api/client";
 
 export const AuthContext = createContext(null);
@@ -36,34 +28,21 @@ export function AuthProvider({ children }) {
     bootstrap();
   }, []);
 
-  // Đăng nhập bình thường
+  async function authAndFetch(authFn, payload) {
+    const response = await authFn(payload);
+    const token = response?.data?.token;
+    if (token) saveToken(token);
+    const meResponse = await getMe();
+    setUser(meResponse?.data?.user || null);
+    return response;
+  }
+
   async function loginAndFetch(payload) {
-    const response = await login(payload);
-    const token = response?.data?.token;
-    if (token) saveToken(token);
-    const meResponse = await getMe();
-    setUser(meResponse?.data?.user || null);
-    return response;
+    return authAndFetch(login, payload);
   }
 
-  // Đăng ký: chỉ gửi request, KHÔNG tự đăng nhập (cần verify OTP trước)
-  async function registerOnly(payload) {
-    const response = await register(payload);
-    return response;
-  }
-
-  // Xác thực OTP → đăng nhập
-  async function verifyAndLogin(payload) {
-    const response = await verifyEmail(payload);
-    const token = response?.data?.token;
-    if (token) saveToken(token);
-    const meResponse = await getMe();
-    setUser(meResponse?.data?.user || null);
-    return response;
-  }
-
-  async function handleResendOtp(payload) {
-    return await apiResendOtp(payload);
+  async function registerAndFetch(payload) {
+    return authAndFetch(register, payload);
   }
 
   function logout() {
@@ -77,9 +56,7 @@ export function AuthProvider({ children }) {
       isLoading,
       isAuthenticated: Boolean(user),
       login: loginAndFetch,
-      register: registerOnly,
-      verifyEmail: verifyAndLogin,
-      resendOtp: handleResendOtp,
+      register: registerAndFetch,
       logout,
     }),
     [user, isLoading]

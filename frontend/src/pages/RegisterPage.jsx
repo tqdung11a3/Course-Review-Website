@@ -39,7 +39,7 @@ export default function RegisterPage() {
     setError("");
     setIsSubmitting(true);
     try {
-      const res = await register({
+      await register({
         fullName: form.fullName.trim(),
         email: form.email.trim(),
         role: AUTH_ROLES.student,
@@ -47,9 +47,7 @@ export default function RegisterPage() {
         password: form.password,
         confirmPassword: form.confirmPassword,
       });
-      // Lưu email để dùng ở trang verify
-      sessionStorage.setItem("pendingVerifyEmail", res?.data?.email || form.email.trim());
-      navigate("/verify", { replace: true });
+      navigate("/courses", { replace: true });
     } catch (err) {
       setError(translateAuthError(err?.response?.data?.message) || "Đăng ký thất bại");
     } finally {

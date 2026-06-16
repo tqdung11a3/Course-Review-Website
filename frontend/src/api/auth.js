@@ -10,16 +10,6 @@ export async function register(payload) {
   return data;
 }
 
-export async function verifyEmail(payload) {
-  const { data } = await apiClient.post("/api/auth/verify-email", payload);
-  return data;
-}
-
-export async function resendOtp(payload) {
-  const { data } = await apiClient.post("/api/auth/resend-otp", payload);
-  return data;
-}
-
 export async function getMe() {
   const { data } = await apiClient.get("/api/auth/me");
   return data;
